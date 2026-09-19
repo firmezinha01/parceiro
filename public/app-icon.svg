@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#f59e0b" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  <rect x="12" y="12" width="488" height="488" rx="100" fill="none" stroke="#334155" stroke-width="4" />
+
+  <!-- Delivery Box Emblem -->
+  <g transform="translate(106, 110)" filter="url(#glow)">
+    <!-- Top Face -->
+    <polygon points="150,30 270,95 150,160 30,95" fill="#fef08a" />
+    <!-- Left Face -->
+    <polygon points="30,95 150,160 150,280 30,215" fill="#eab308" />
+    <!-- Right Face -->
+    <polygon points="150,160 270,95 270,215 150,280" fill="#ca8a04" />
+
+    <!-- Packaging Tape -->
+    <polygon points="135,38 165,54 165,160 135,144" fill="#d97706" opacity="0.8" />
+    <polygon points="135,160 165,160 165,280 135,280" fill="#b45309" opacity="0.8" />
+
+    <!-- Motion Wings / Speed Arrow -->
+    <path d="M-15,140 L45,140 L35,165 L-25,165 Z" fill="url(#accentGrad)" opacity="0.9" />
+    <path d="M-30,185 L20,185 L10,210 L-40,210 Z" fill="url(#accentGrad)" opacity="0.7" />
+    <path d="M265,140 L325,140 L315,165 L255,165 Z" fill="url(#accentGrad)" opacity="0.9" />
+  </g>
+
+  <!-- Title Badge -->
+  <text x="256" y="440" text-anchor="middle" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="34" letter-spacing="3">CORREIOS</text>
+  <text x="256" y="475" text-anchor="middle" fill="#fbbf24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="20" letter-spacing="6">PARCEIROS</text>
+</svg>

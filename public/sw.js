@@ -1,0 +1,75 @@
+// Service Worker - Correios Parceiros PWA
+const CACHE_NAME = 'correios-parceiros-v1';
+
+const ASSETS_TO_PRECACHE = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/app-icon.svg',
+  '/pwa-192x192.png',
+  '/pwa-512x512.png',
+  '/apple-touch-icon.png'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS_TO_PRECACHE).catch(() => {
+        // Continue even if some non-critical asset fails
+      });
+    })
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// Network First strategy with Cache fallback for navigation and static files
+self.addEventListener('fetch', (event) => {
+  // Ignora chamadas externas de APIs (ex: ViaCEP, OSRM, Nominatim) para manter dados sempre frescos
+  if (!event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  // Não intercepta requisições de desenvolvimento do Vite (HMR)
+  if (event.request.url.includes('/@vite/') || event.request.url.includes('/@react-refresh')) {
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && event.request.method === 'GET') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          if (event.request.mode === 'navigate') {
+            return caches.match('/');
+          }
+          return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+        });
+      })
+  );
+});
