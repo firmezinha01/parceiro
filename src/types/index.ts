@@ -81,6 +81,8 @@ export interface CourierProfile {
   id: string;
   name: string;
   document: string; // CPF
+  email?: string;
+  password?: string;
   cnh: string;
   modal: VehicleModal;
   vehiclePlate: string;
@@ -93,6 +95,8 @@ export interface CourierProfile {
   balancePending: number;
   pixKey: string;
   isOnline: boolean;
+  isBlocked?: boolean;
+  registeredAt?: string;
   documentPhoto?: string; // Foto CNH
   selfiePhoto?: string;   // Selfie com CNH
   verificationStatus: VerificationStatus;

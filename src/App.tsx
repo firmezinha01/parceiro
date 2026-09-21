@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { AuthScreen } from './components/auth/AuthScreen';
 import { Navbar } from './components/layout/Navbar';
 import { RoleSwitcher } from './components/layout/RoleSwitcher';
 import { QuoteForm } from './components/client/QuoteForm';
 import { TrackingView } from './components/client/TrackingView';
-import { CourierDashboard } from './components/courier/CourierDashboard';
 import { MerchantDashboard } from './components/merchant/MerchantDashboard';
 import { AdminDashboard } from './components/admin/AdminDashboard';
+import { CourierStandaloneApp } from './components/courier/CourierStandaloneApp';
 import { Order } from './types';
 import {
   Send,
@@ -23,13 +23,47 @@ import {
   Layers,
 } from 'lucide-react';
 
-const MainContent: React.FC = () => {
+type ActivePortal = 'main' | 'courier';
+
+function detectPortal(): ActivePortal {
+  if (typeof window === 'undefined') return 'main';
+  const pathname = window.location.pathname.toLowerCase();
+  const search = new URLSearchParams(window.location.search);
+  const hash = window.location.hash.toLowerCase();
+
+  if (
+    pathname.startsWith('/entregador') ||
+    pathname.startsWith('/courier') ||
+    search.get('portal') === 'courier' ||
+    search.get('portal') === 'entregador' ||
+    search.get('app') === 'courier' ||
+    search.get('app') === 'entregador' ||
+    hash.includes('entregador') ||
+    hash.includes('courier')
+  ) {
+    return 'courier';
+  }
+  return 'main';
+}
+
+interface MainContentProps {
+  onOpenCourierApp: () => void;
+}
+
+const MainContent: React.FC<MainContentProps> = ({ onOpenCourierApp }) => {
   const { authUser, currentRole, setCurrentRole, orders, setActiveOrderForTracking } = useApp();
   const [clientTab, setClientTab] = useState<'quote' | 'tracking'>('quote');
 
-  // Se o usuário não estiver logado, exibe a tela de login / cadastro / Google
+  // Se o papel estiver como 'courier' (legado), ajusta para 'client' pois o entregador agora tem app próprio
+  useEffect(() => {
+    if ((currentRole as any) === 'courier') {
+      setCurrentRole('client');
+    }
+  }, [currentRole, setCurrentRole]);
+
+  // Se o usuário não estiver logado no portal principal, exibe a tela de login / cadastro / Google
   if (!authUser) {
-    return <AuthScreen />;
+    return <AuthScreen onOpenCourierApp={onOpenCourierApp} />;
   }
 
   const handleOrderCreated = (order: Order) => {
@@ -39,11 +73,11 @@ const MainContent: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100/70 text-slate-900">
-      {/* Barra de Navegação Superior */}
-      <Navbar />
+      {/* Barra de Navegação Superior do Portal Principal */}
+      <Navbar onOpenCourierApp={onOpenCourierApp} />
 
-      {/* Alternador Interativo de Perfis */}
-      <RoleSwitcher />
+      {/* Alternador de Perfis (Cliente, Ponto Lojista, Painel Central) */}
+      <RoleSwitcher onOpenCourierApp={onOpenCourierApp} />
 
       {/* Área Principal de Conteúdo */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -57,7 +91,7 @@ const MainContent: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setClientTab('quote')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                     clientTab === 'quote'
                       ? 'bg-slate-900 text-white shadow-xs'
                       : 'text-slate-600 hover:bg-slate-200'
@@ -69,7 +103,7 @@ const MainContent: React.FC = () => {
 
                 <button
                   onClick={() => setClientTab('tracking')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                     clientTab === 'tracking'
                       ? 'bg-slate-900 text-white shadow-xs'
                       : 'text-slate-600 hover:bg-slate-200'
@@ -100,19 +134,16 @@ const MainContent: React.FC = () => {
         )}
 
         {/* ========================================================
-            2. VISÃO DO ENTREGADOR PARCEIRO (MOTO / CARRO)
-        ======================================================== */}
-        {currentRole === 'courier' && <CourierDashboard />}
-
-        {/* ========================================================
-            3. VISÃO DO LOJISTA PARCEIRO (PONTO DE COLETA)
+            2. VISÃO DO LOJISTA PARCEIRO (PONTO DE COLETA DROP-OFF)
         ======================================================== */}
         {currentRole === 'merchant' && <MerchantDashboard />}
 
         {/* ========================================================
-            4. VISÃO DO ADMINISTRADOR / PAINEL CENTRAL
+            3. VISÃO DO ADMINISTRADOR / PAINEL CENTRAL (GESTÃO DE FROTAS)
         ======================================================== */}
-        {currentRole === 'admin' && <AdminDashboard />}
+        {currentRole === 'admin' && (
+          <AdminDashboard onOpenCourierApp={() => onOpenCourierApp()} />
+        )}
       </main>
 
       {/* Rodapé Informativo */}
@@ -121,7 +152,7 @@ const MainContent: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="font-extrabold text-slate-900">Correios Parceiros</span>
             <span>—</span>
-            <span>Plataforma de Retirada e Entrega Descentralizada (MVP Local)</span>
+            <span>Plataforma de Retirada e Entrega Descentralizada</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-[11px]">
@@ -129,7 +160,7 @@ const MainContent: React.FC = () => {
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Baixas Auditáveis com GPS
             </span>
             <span className="flex items-center gap-1">
-              <Bike className="w-3.5 h-3.5 text-amber-600" /> Repasse por Km/Tempo (65/85/75)
+              <Bike className="w-3.5 h-3.5 text-amber-600" /> Repasse por Componente
             </span>
             <span className="flex items-center gap-1">
               <Store className="w-3.5 h-3.5 text-purple-600" /> Pontos Lojistas Drop-off
@@ -142,9 +173,29 @@ const MainContent: React.FC = () => {
 };
 
 export default function App() {
+  const [activePortal, setActivePortal] = useState<ActivePortal>(detectPortal);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setActivePortal(detectPortal());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateToPortal = (target: ActivePortal) => {
+    const targetUrl = target === 'courier' ? '/entregador' : '/';
+    window.history.pushState({}, '', targetUrl);
+    setActivePortal(target);
+  };
+
   return (
     <AppProvider>
-      <MainContent />
+      {activePortal === 'courier' ? (
+        <CourierStandaloneApp onBackToMain={() => navigateToPortal('main')} />
+      ) : (
+        <MainContent onOpenCourierApp={() => navigateToPortal('courier')} />
+      )}
     </AppProvider>
   );
 }

@@ -5,9 +5,14 @@ import {
   RotateCcw,
   LogOut,
   User,
+  Bike,
 } from 'lucide-react';
 
-export const Navbar: React.FC = () => {
+interface NavbarProps {
+  onOpenCourierApp?: () => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onOpenCourierApp }) => {
   const {
     authUser,
     logout,
@@ -17,7 +22,6 @@ export const Navbar: React.FC = () => {
 
   const roleLabels: Record<string, { label: string; color: string }> = {
     client: { label: 'Cliente (Remetente / Destinatário)', color: 'bg-emerald-500' },
-    courier: { label: 'Entregador Parceiro', color: 'bg-amber-500' },
     merchant: { label: 'Lojista (Ponto de Coleta)', color: 'bg-purple-500' },
     admin: { label: 'Painel Central / Admin', color: 'bg-indigo-500' },
   };
@@ -49,6 +53,19 @@ export const Navbar: React.FC = () => {
 
           {/* Ações de Celular e Perfil */}
           <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Atalho Direto para o Aplicativo do Entregador */}
+            {onOpenCourierApp && (
+              <button
+                onClick={onOpenCourierApp}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition shadow-sm cursor-pointer"
+                title="Acessar o aplicativo autônomo do Entregador"
+              >
+                <Bike className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">App do Entregador</span>
+                <span className="sm:hidden">Entregador</span>
+              </button>
+            )}
+
             {/* Indicador de Perfil */}
             <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-xs">
               <span className={`w-2 h-2 rounded-full ${roleLabels[currentRole]?.color || 'bg-amber-400'} animate-pulse`}></span>

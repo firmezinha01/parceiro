@@ -17,13 +17,23 @@ import {
   createScanEvent,
 } from '../services/trackingService';
 
-interface AppContextType {
-  // Autenticação & Sessão
+export interface AppContextType {
+  // Autenticação Principal (Cliente / Admin / Merchant)
   authUser: AuthUser | null;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   signup: (name: string, email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   loginWithGoogle: () => Promise<void>;
   logout: () => void;
+
+  // Autenticação & Sessão Exclusiva do Aplicativo do Entregador
+  courierSession: CourierProfile | null;
+  loginCourier: (credential: string, password?: string) => Promise<{ success: boolean; message?: string }>;
+  logoutCourier: () => void;
+  selectCourierSession: (courierId: string) => void;
+  toggleCourierOnline: (courierId: string, isOnline?: boolean) => void;
+  blockCourier: (courierId: string) => void;
+  unblockCourier: (courierId: string) => void;
+  deleteCourier: (courierId: string) => void;
 
   currentRole: UserRole;
   setCurrentRole: (role: UserRole) => void;
@@ -40,12 +50,12 @@ interface AppContextType {
   setActiveOrderForTracking: (order: Order | null) => void;
   updatePricingConfig: (config: Partial<PricingConfig>) => void;
   createOrder: (orderData: Omit<Order, 'id' | 'trackingCode' | 'createdAt' | 'status' | 'scanHistory'>) => Order;
-  acceptOrder: (orderId: string) => void;
+  acceptOrder: (orderId: string, customCourier?: CourierProfile) => void;
   recordDropoffIn: (orderId: string, merchantId: string) => void;
   recordDropoffOut: (orderId: string, merchantId: string) => void;
   recordCourierPickup: (orderId: string, proofPhoto?: string) => void;
   completeDelivery: (orderId: string, signatureDataUrl: string, proofPhoto?: string) => void;
-  withdrawCourierBalance: (amount: number) => void;
+  withdrawCourierBalance: (amount: number, courierId?: string) => void;
   registerClient: (data: Omit<ClientProfile, 'id' | 'createdAt' | 'verificationStatus'>) => ClientProfile;
   registerCourier: (data: Omit<CourierProfile, 'id' | 'rating' | 'totalDeliveries' | 'balanceAvailable' | 'balancePending' | 'isOnline' | 'verificationStatus'>) => CourierProfile;
   registerMerchant: (data: Omit<DropoffPoint, 'id' | 'packageCount' | 'totalEarnings' | 'verificationStatus'>) => DropoffPoint;
@@ -63,6 +73,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const PROD_STORAGE_KEYS = {
   AUTH_SESSION: 'correios_prod_auth_session',
   REGISTERED_USERS: 'correios_prod_registered_users',
+  COURIER_AUTH_SESSION: 'correios_prod_courier_session',
   CONFIG: 'correios_prod_config',
   ORDERS: 'correios_prod_orders',
   CLIENTS: 'correios_prod_clients',
@@ -150,6 +161,53 @@ function loadInitialClients(): ClientProfile[] {
   return [];
 }
 
+export const DEFAULT_DEMO_COURIERS: CourierProfile[] = [
+  {
+    id: 'courier_moto_01',
+    name: 'Marcos Silva',
+    document: '382.910.482-10',
+    email: 'marcos.moto@entregas.com',
+    password: '1234',
+    cnh: '05928194021',
+    modal: 'moto',
+    vehiclePlate: 'BRA-2E19',
+    vehicleModel: 'Honda CG 160 Cargo',
+    phone: '(11) 98765-4321',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+    rating: 4.9,
+    totalDeliveries: 32,
+    balanceAvailable: 145.5,
+    balancePending: 0,
+    pixKey: 'marcos.moto@entregas.com',
+    isOnline: true,
+    isBlocked: false,
+    registeredAt: '2026-03-01T10:00:00.000Z',
+    verificationStatus: 'verified',
+  },
+  {
+    id: 'courier_carro_02',
+    name: 'Carlos Souza',
+    document: '291.849.192-34',
+    email: 'carlos.utilitarios@entregas.com',
+    password: '1234',
+    cnh: '04829103948',
+    modal: 'car',
+    vehiclePlate: 'CAR-4F90',
+    vehicleModel: 'Fiat Fiorino 1.4 EVO',
+    phone: '(11) 97654-3210',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+    rating: 5.0,
+    totalDeliveries: 19,
+    balanceAvailable: 210.0,
+    balancePending: 0,
+    pixKey: '291.849.192-34',
+    isOnline: true,
+    isBlocked: false,
+    registeredAt: '2026-03-05T14:30:00.000Z',
+    verificationStatus: 'verified',
+  },
+];
+
 function loadInitialCouriers(): CourierProfile[] {
   try {
     const saved = localStorage.getItem(PROD_STORAGE_KEYS.COURIERS);
@@ -166,7 +224,7 @@ function loadInitialCouriers(): CourierProfile[] {
       }
     }
   } catch (e) {}
-  return [];
+  return DEFAULT_DEMO_COURIERS;
 }
 
 function loadInitialDropoffs(): DropoffPoint[] {
@@ -347,6 +405,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [couriers, setCouriers] = useState<CourierProfile[]>(loadInitialCouriers);
+  const [courierSession, setCourierSession] = useState<CourierProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem(PROD_STORAGE_KEYS.COURIER_AUTH_SESSION);
+      if (saved) return JSON.parse(saved);
+      const initial = loadInitialCouriers();
+      return initial[0] || null;
+    } catch {
+      return null;
+    }
+  });
+
   const [courierProfileState, setCourierProfileState] = useState<CourierProfile | null>(() => {
     try {
       const saved = localStorage.getItem(PROD_STORAGE_KEYS.CURRENT_COURIER);
@@ -386,6 +455,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [couriers]);
 
   useEffect(() => {
+    if (courierSession) {
+      safeSetItem(PROD_STORAGE_KEYS.COURIER_AUTH_SESSION, JSON.stringify(courierSession));
+    } else {
+      localStorage.removeItem(PROD_STORAGE_KEYS.COURIER_AUTH_SESSION);
+    }
+  }, [courierSession]);
+
+  useEffect(() => {
     if (courierProfileState) {
       safeSetItem(PROD_STORAGE_KEYS.CURRENT_COURIER, JSON.stringify(courierProfileState));
     }
@@ -401,7 +478,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Valores ativos com fallbacks limpos
   const currentClient: ClientProfile = currentClientState || clients[0] || EMPTY_CLIENT;
-  const courierProfile: CourierProfile = courierProfileState || couriers[0] || EMPTY_COURIER;
+  const courierProfile: CourierProfile = courierSession || courierProfileState || couriers[0] || EMPTY_COURIER;
 
   useEffect(() => {
     if (activeOrderForTracking) {
@@ -418,6 +495,89 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setCourierProfile = (courier: CourierProfile) => {
     setCourierProfileState(courier);
+    setCourierSession(courier);
+  };
+
+  const loginCourier = async (credential: string, password?: string): Promise<{ success: boolean; message?: string }> => {
+    const clean = credential.trim().toLowerCase().replace(/[.\-\/\s]/g, '');
+    const found = couriers.find((c) => {
+      const cDoc = c.document.replace(/[.\-\/\s]/g, '');
+      const cEmail = (c.email || '').toLowerCase().trim();
+      const cPhone = c.phone.replace(/[.\-\/\s()]/g, '');
+      return cDoc === clean || cEmail === credential.trim().toLowerCase() || cPhone === clean;
+    });
+
+    if (!found) {
+      return { success: false, message: 'Entregador não encontrado. Verifique seu CPF ou E-mail, ou cadastre-se como parceiro.' };
+    }
+
+    if (found.isBlocked) {
+      return { success: false, message: 'Seu cadastro de parceiro está suspenso temporariamente pela administração.' };
+    }
+
+    if (found.password && password && found.password !== password) {
+      return { success: false, message: 'Senha incorreta. Verifique e tente novamente.' };
+    }
+
+    setCourierSession(found);
+    setCourierProfileState(found);
+    safeSetItem(PROD_STORAGE_KEYS.COURIER_AUTH_SESSION, JSON.stringify(found));
+    return { success: true };
+  };
+
+  const logoutCourier = () => {
+    setCourierSession(null);
+    localStorage.removeItem(PROD_STORAGE_KEYS.COURIER_AUTH_SESSION);
+  };
+
+  const selectCourierSession = (courierId: string) => {
+    const found = couriers.find((c) => c.id === courierId);
+    if (found) {
+      setCourierSession(found);
+      setCourierProfileState(found);
+      safeSetItem(PROD_STORAGE_KEYS.COURIER_AUTH_SESSION, JSON.stringify(found));
+    }
+  };
+
+  const toggleCourierOnline = (courierId: string, isOnline?: boolean) => {
+    setCouriers((prev) =>
+      prev.map((c) => {
+        if (c.id === courierId) {
+          const nextState = isOnline !== undefined ? isOnline : !c.isOnline;
+          return { ...c, isOnline: nextState };
+        }
+        return c;
+      })
+    );
+    if (courierSession?.id === courierId) {
+      setCourierSession((prev) => (prev ? { ...prev, isOnline: isOnline !== undefined ? isOnline : !prev.isOnline } : null));
+    }
+  };
+
+  const blockCourier = (courierId: string) => {
+    setCouriers((prev) =>
+      prev.map((c) => (c.id === courierId ? { ...c, isBlocked: true, isOnline: false } : c))
+    );
+    if (courierSession?.id === courierId) {
+      setCourierSession((prev) => (prev ? { ...prev, isBlocked: true, isOnline: false } : null));
+    }
+  };
+
+  const unblockCourier = (courierId: string) => {
+    setCouriers((prev) =>
+      prev.map((c) => (c.id === courierId ? { ...c, isBlocked: false } : c))
+    );
+    if (courierSession?.id === courierId) {
+      setCourierSession((prev) => (prev ? { ...prev, isBlocked: false } : null));
+    }
+  };
+
+  const deleteCourier = (courierId: string) => {
+    setCouriers((prev) => prev.filter((c) => c.id !== courierId));
+    if (courierSession?.id === courierId) {
+      setCourierSession(null);
+      localStorage.removeItem(PROD_STORAGE_KEYS.COURIER_AUTH_SESSION);
+    }
   };
 
   const updatePricingConfig = (newConfig: Partial<PricingConfig>) => {
@@ -460,6 +620,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       balanceAvailable: 0,
       balancePending: 0,
       isOnline: true,
+      isBlocked: false,
+      registeredAt: new Date().toISOString(),
       verificationStatus: 'verified',
     };
 
@@ -468,8 +630,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       safeSetItem(PROD_STORAGE_KEYS.COURIERS, JSON.stringify(next));
       return next;
     });
+    setCourierSession(newCourier);
     setCourierProfileState(newCourier);
-    safeSetItem(PROD_STORAGE_KEYS.CURRENT_COURIER, JSON.stringify(newCourier));
+    safeSetItem(PROD_STORAGE_KEYS.COURIER_AUTH_SESSION, JSON.stringify(newCourier));
 
     return newCourier;
   };
@@ -559,30 +722,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newOrder;
   };
 
-  const acceptOrder = (orderId: string) => {
-    let effectiveCourier = courierProfile;
+  const acceptOrder = (orderId: string, customCourier?: CourierProfile) => {
+    let effectiveCourier = customCourier || courierSession || courierProfile;
     if (!effectiveCourier || effectiveCourier.id === 'courier_unregistered') {
-      const newCourier: CourierProfile = {
-        id: authUser ? `courier_${authUser.id}` : 'courier_partner_01',
-        name: authUser?.name || 'Entregador Credenciado Parceiro',
-        document: '382.910.482-10',
-        cnh: '05928194021',
-        modal: 'moto',
-        vehiclePlate: 'BRA-2E19',
-        vehicleModel: 'Honda CG 160 Cargo',
-        phone: '(11) 98765-4321',
-        avatarUrl: authUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        rating: 5.0,
-        totalDeliveries: 1,
-        balanceAvailable: 0,
-        balancePending: 0,
-        pixKey: authUser?.email || 'entregador@pix.com',
-        isOnline: true,
-        verificationStatus: 'verified',
-      };
-      setCourierProfileState(newCourier);
-      safeSetItem(PROD_STORAGE_KEYS.CURRENT_COURIER, JSON.stringify(newCourier));
-      effectiveCourier = newCourier;
+      const fallbackCourier = couriers[0] || DEFAULT_DEMO_COURIERS[0];
+      effectiveCourier = fallbackCourier;
+      setCourierSession(fallbackCourier);
+      setCourierProfileState(fallbackCourier);
     }
 
     setOrders((prev) =>
@@ -592,7 +738,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             orderId: ord.id,
             trackingCode: ord.trackingCode,
             stepType: 'created',
-            description: `Corrida aceita pelo entregador credenciado ${effectiveCourier.name}`,
+            description: `Corrida aceita pelo entregador credenciado ${effectiveCourier.name} (${effectiveCourier.modal.toUpperCase()})`,
             operatorId: effectiveCourier.id,
             operatorName: effectiveCourier.name,
             operatorRole: 'courier',
@@ -617,13 +763,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setOrders((prev) =>
       prev.map((ord) => {
         if (ord.id === orderId) {
+          const assignedCourier = couriers.find((c) => c.id === ord.courierId) || courierSession || courierProfile;
           const scan = createScanEvent({
             orderId: ord.id,
             trackingCode: ord.trackingCode,
             stepType: 'pickup_courier',
-            description: `Baixa 1: Pacote coletado com conferência por ${courierProfile.name}`,
-            operatorId: courierProfile.id,
-            operatorName: courierProfile.name,
+            description: `Baixa 1: Pacote coletado com conferência por ${assignedCourier.name}`,
+            operatorId: assignedCourier.id,
+            operatorName: assignedCourier.name,
             operatorRole: 'courier',
             locationName: `${ord.sender.address.street}, ${ord.sender.address.number}`,
             coordinates: { lat: ord.sender.address.lat, lng: ord.sender.address.lng },
@@ -633,9 +780,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return {
             ...ord,
             status: 'in_transit',
-            courierId: courierProfile.id,
-            courierName: courierProfile.name,
-            courierPhone: courierProfile.phone,
+            courierId: assignedCourier.id,
+            courierName: assignedCourier.name,
+            courierPhone: assignedCourier.phone,
             scanHistory: [...ord.scanHistory, scan],
           };
         }
@@ -719,18 +866,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const completeDelivery = (orderId: string, signatureDataUrl: string, proofPhoto?: string) => {
     let payoutToAdd = 0;
+    let targetCourierId = '';
 
     setOrders((prev) =>
       prev.map((ord) => {
         if (ord.id === orderId) {
           payoutToAdd = ord.price.totalCourierPayout;
+          const assignedCourier = couriers.find((c) => c.id === ord.courierId) || courierSession || courierProfile;
+          targetCourierId = assignedCourier.id;
+
           const scan = createScanEvent({
             orderId: ord.id,
             trackingCode: ord.trackingCode,
             stepType: 'final_delivery',
             description: `Baixa Final: Entregue ao destinatário com assinatura digital auditada`,
-            operatorId: courierProfile.id,
-            operatorName: courierProfile.name,
+            operatorId: assignedCourier.id,
+            operatorName: assignedCourier.name,
             operatorRole: 'courier',
             locationName: `${ord.recipient.address.street}, ${ord.recipient.address.number}`,
             coordinates: { lat: ord.recipient.address.lat, lng: ord.recipient.address.lng },
@@ -752,26 +903,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
-    if (payoutToAdd > 0) {
-      setCourierProfileState((prev) => {
-        const base = prev || EMPTY_COURIER;
-        return {
-          ...base,
-          balanceAvailable: Math.round((base.balanceAvailable + payoutToAdd) * 100) / 100,
-          totalDeliveries: base.totalDeliveries + 1,
-        };
+    if (payoutToAdd > 0 && targetCourierId) {
+      setCouriers((prev) => {
+        const next = prev.map((c) => {
+          if (c.id === targetCourierId) {
+            return {
+              ...c,
+              balanceAvailable: Math.round((c.balanceAvailable + payoutToAdd) * 100) / 100,
+              totalDeliveries: c.totalDeliveries + 1,
+            };
+          }
+          return c;
+        });
+        safeSetItem(PROD_STORAGE_KEYS.COURIERS, JSON.stringify(next));
+        return next;
       });
+
+      if (courierSession?.id === targetCourierId) {
+        setCourierSession((prev) =>
+          prev
+            ? {
+                ...prev,
+                balanceAvailable: Math.round((prev.balanceAvailable + payoutToAdd) * 100) / 100,
+                totalDeliveries: prev.totalDeliveries + 1,
+              }
+            : null
+        );
+      }
+      if (courierProfileState?.id === targetCourierId) {
+        setCourierProfileState((prev) =>
+          prev
+            ? {
+                ...prev,
+                balanceAvailable: Math.round((prev.balanceAvailable + payoutToAdd) * 100) / 100,
+                totalDeliveries: prev.totalDeliveries + 1,
+              }
+            : null
+        );
+      }
     }
   };
 
-  const withdrawCourierBalance = (amount: number) => {
-    setCourierProfileState((prev) => {
-      const base = prev || EMPTY_COURIER;
-      return {
-        ...base,
-        balanceAvailable: Math.max(0, Math.round((base.balanceAvailable - amount) * 100) / 100),
-      };
+  const withdrawCourierBalance = (amount: number, courierId?: string) => {
+    const targetId = courierId || courierSession?.id || courierProfile.id;
+    setCouriers((prev) => {
+      const next = prev.map((c) => {
+        if (c.id === targetId) {
+          return {
+            ...c,
+            balanceAvailable: Math.max(0, Math.round((c.balanceAvailable - amount) * 100) / 100),
+          };
+        }
+        return c;
+      });
+      safeSetItem(PROD_STORAGE_KEYS.COURIERS, JSON.stringify(next));
+      return next;
     });
+
+    if (courierSession?.id === targetId) {
+      setCourierSession((prev) =>
+        prev
+          ? {
+              ...prev,
+              balanceAvailable: Math.max(0, Math.round((prev.balanceAvailable - amount) * 100) / 100),
+            }
+          : null
+      );
+    }
+    if (courierProfileState?.id === targetId) {
+      setCourierProfileState((prev) =>
+        prev
+          ? {
+              ...prev,
+              balanceAvailable: Math.max(0, Math.round((prev.balanceAvailable - amount) * 100) / 100),
+            }
+          : null
+      );
+    }
   };
 
   // Limpeza de dados mantendo padrão de produção limpo
@@ -781,8 +989,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setOrders([]);
     setClients([]);
     setCurrentClientState(null);
-    setCouriers([]);
-    setCourierProfileState(null);
+    setCouriers(DEFAULT_DEMO_COURIERS);
+    setCourierProfileState(DEFAULT_DEMO_COURIERS[0]);
+    setCourierSession(DEFAULT_DEMO_COURIERS[0]);
     setDropoffPoints([]);
     setActiveOrderForTracking(null);
   };
@@ -799,6 +1008,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         signup,
         loginWithGoogle,
         logout,
+        courierSession,
+        loginCourier,
+        logoutCourier,
+        selectCourierSession,
+        toggleCourierOnline,
+        blockCourier,
+        unblockCourier,
+        deleteCourier,
         currentRole,
         setCurrentRole,
         orders,

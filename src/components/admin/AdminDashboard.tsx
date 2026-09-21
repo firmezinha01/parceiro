@@ -5,6 +5,7 @@ import { StatusBadge } from '../common/StatusBadge';
 import { PricingSettings } from './PricingSettings';
 import { AuditLogViewer } from './AuditLogViewer';
 import { AdminVerificationView } from './AdminVerificationView';
+import { CourierManagementView } from './CourierManagementView';
 import {
   TrendingUp,
   DollarSign,
@@ -19,9 +20,13 @@ import {
   UserCheck,
 } from 'lucide-react';
 
-export const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  onOpenCourierApp?: (courierId?: string) => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onOpenCourierApp }) => {
   const { orders, dropoffPoints, clients, couriers } = useApp();
-  const [adminTab, setAdminTab] = useState<'overview' | 'verification' | 'pricing' | 'audit' | 'orders'>('overview');
+  const [adminTab, setAdminTab] = useState<'overview' | 'couriers' | 'verification' | 'pricing' | 'audit' | 'orders'>('overview');
 
   // Cálculos Financeiros Globais do Sistema
   const totalOrders = orders.length;
@@ -55,6 +60,21 @@ export const AdminDashboard: React.FC = () => {
         >
           <BarChart3 className="w-4 h-4" />
           <span>Métricas Operacionais</span>
+        </button>
+
+        <button
+          onClick={() => setAdminTab('couriers')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
+            adminTab === 'couriers'
+              ? 'bg-amber-500 text-slate-950 shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Bike className="w-4 h-4 text-amber-600" />
+          <span>Gestão de Entregadores Parceiros</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-slate-900 text-amber-400">
+            {couriers.length}
+          </span>
         </button>
 
         <button
@@ -250,6 +270,9 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Tab: Gestão de Entregadores Parceiros */}
+      {adminTab === 'couriers' && <CourierManagementView onOpenCourierApp={onOpenCourierApp} />}
 
       {/* Tab 2: Compliance & Aprovação de Cadastros */}
       {adminTab === 'verification' && <AdminVerificationView />}
