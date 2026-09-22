@@ -16,8 +16,19 @@ import {
   generateTrackingCode,
   createScanEvent,
 } from '../services/trackingService';
+import {
+  supabase,
+  isSupabaseConfigured,
+  fetchOrdersFromSupabase,
+  saveOrderToSupabase,
+  fetchCouriersFromSupabase,
+  saveCourierToSupabase,
+  mapDbOrderToOrder,
+  mapDbCourierToCourier,
+} from '../services/supabaseClient';
 
 export interface AppContextType {
+  isCloudConnected: boolean;
   // Autenticação Principal (Cliente / Admin / Merchant)
   authUser: AuthUser | null;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
@@ -457,6 +468,92 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  // Sincronização em Nuvem em Tempo Real com o Supabase (PostgreSQL + WebSockets)
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !supabase) return;
+
+    let isMounted = true;
+
+    // 1. Carrega dados do Supabase para atualizar a base local
+    fetchOrdersFromSupabase().then((cloudOrders) => {
+      if (isMounted && cloudOrders) {
+        setOrders((prev) => {
+          const cloudIds = new Set(cloudOrders.map((o) => o.id));
+          const localOnly = prev.filter((o) => !cloudIds.has(o.id));
+          const combined = [...cloudOrders, ...localOnly];
+          safeSetItem(PROD_STORAGE_KEYS.ORDERS, JSON.stringify(combined));
+          return combined;
+        });
+      }
+    });
+
+    fetchCouriersFromSupabase().then((cloudCouriers) => {
+      if (isMounted && cloudCouriers && cloudCouriers.length > 0) {
+        setCouriers((prev) => {
+          const cloudIds = new Set(cloudCouriers.map((c) => c.id));
+          const localOnly = prev.filter((c) => !cloudIds.has(c.id));
+          const combined = [...cloudCouriers, ...localOnly];
+          safeSetItem(PROD_STORAGE_KEYS.COURIERS, JSON.stringify(combined));
+          return combined;
+        });
+      }
+    });
+
+    // 2. Inscrição WebSockets em Tempo Real na tabela 'orders'
+    const ordersChannel = supabase
+      .channel('supabase_realtime_orders')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          if (payload.new && (payload.new as any).id) {
+            const updated = mapDbOrderToOrder(payload.new);
+            setOrders((prev) => {
+              const exists = prev.some((o) => o.id === updated.id);
+              const next = exists
+                ? prev.map((o) => (o.id === updated.id ? updated : o))
+                : [updated, ...prev];
+              safeSetItem(PROD_STORAGE_KEYS.ORDERS, JSON.stringify(next));
+              return next;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    // 3. Inscrição WebSockets em Tempo Real na tabela 'couriers'
+    const couriersChannel = supabase
+      .channel('supabase_realtime_couriers')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'couriers' },
+        (payload) => {
+          if (payload.new && (payload.new as any).id) {
+            const updated = mapDbCourierToCourier(payload.new);
+            setCouriers((prev) => {
+              const exists = prev.some((c) => c.id === updated.id);
+              const next = exists
+                ? prev.map((c) => (c.id === updated.id ? updated : c))
+                : [updated, ...prev];
+              safeSetItem(PROD_STORAGE_KEYS.COURIERS, JSON.stringify(next));
+              return next;
+            });
+
+            setCourierSession((curr) => (curr?.id === updated.id ? updated : curr));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      if (supabase) {
+        supabase.removeChannel(ordersChannel);
+        supabase.removeChannel(couriersChannel);
+      }
+    };
+  }, []);
+
   // Pedido em foco no rastreio
   const [activeOrderForTracking, setActiveOrderForTracking] = useState<Order | null>(null);
 
@@ -567,33 +664,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleCourierOnline = (courierId: string, isOnline?: boolean) => {
+    let updatedCourier: CourierProfile | null = null;
     setCouriers((prev) =>
       prev.map((c) => {
         if (c.id === courierId) {
           const nextState = isOnline !== undefined ? isOnline : !c.isOnline;
-          return { ...c, isOnline: nextState };
+          updatedCourier = { ...c, isOnline: nextState };
+          return updatedCourier;
         }
         return c;
       })
     );
+    if (updatedCourier) {
+      saveCourierToSupabase(updatedCourier);
+    }
     if (courierSession?.id === courierId) {
       setCourierSession((prev) => (prev ? { ...prev, isOnline: isOnline !== undefined ? isOnline : !prev.isOnline } : null));
     }
   };
 
   const blockCourier = (courierId: string) => {
+    let updatedCourier: CourierProfile | null = null;
     setCouriers((prev) =>
-      prev.map((c) => (c.id === courierId ? { ...c, isBlocked: true, isOnline: false } : c))
+      prev.map((c) => {
+        if (c.id === courierId) {
+          updatedCourier = { ...c, isBlocked: true, isOnline: false };
+          return updatedCourier;
+        }
+        return c;
+      })
     );
+    if (updatedCourier) {
+      saveCourierToSupabase(updatedCourier);
+    }
     if (courierSession?.id === courierId) {
       setCourierSession((prev) => (prev ? { ...prev, isBlocked: true, isOnline: false } : null));
     }
   };
 
   const unblockCourier = (courierId: string) => {
+    let updatedCourier: CourierProfile | null = null;
     setCouriers((prev) =>
-      prev.map((c) => (c.id === courierId ? { ...c, isBlocked: false } : c))
+      prev.map((c) => {
+        if (c.id === courierId) {
+          updatedCourier = { ...c, isBlocked: false };
+          return updatedCourier;
+        }
+        return c;
+      })
     );
+    if (updatedCourier) {
+      saveCourierToSupabase(updatedCourier);
+    }
     if (courierSession?.id === courierId) {
       setCourierSession((prev) => (prev ? { ...prev, isBlocked: false } : null));
     }
@@ -660,6 +782,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCourierSession(newCourier);
     setCourierProfileState(newCourier);
     safeSetItem(PROD_STORAGE_KEYS.COURIER_AUTH_SESSION, JSON.stringify(newCourier));
+    saveCourierToSupabase(newCourier);
 
     return newCourier;
   };
@@ -746,6 +869,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setOrders((prev) => [newOrder, ...prev]);
     setActiveOrderForTracking(newOrder);
+    saveOrderToSupabase(newOrder);
     return newOrder;
   };
 
@@ -758,6 +882,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCourierProfileState(fallbackCourier);
     }
 
+    let acceptedOrder: Order | null = null;
     setOrders((prev) =>
       prev.map((ord) => {
         if (ord.id === orderId) {
@@ -773,20 +898,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             coordinates: { lat: -23.5615, lng: -46.6621 },
           });
 
-          return {
+          acceptedOrder = {
             ...ord,
             courierId: effectiveCourier.id,
             courierName: effectiveCourier.name,
             courierPhone: effectiveCourier.phone,
             scanHistory: [...ord.scanHistory, scan],
           };
+          return acceptedOrder;
         }
         return ord;
       })
     );
+
+    if (acceptedOrder) {
+      saveOrderToSupabase(acceptedOrder);
+    }
   };
 
   const recordCourierPickup = (orderId: string, proofPhoto?: string) => {
+    let pickedOrder: Order | null = null;
     setOrders((prev) =>
       prev.map((ord) => {
         if (ord.id === orderId) {
@@ -804,7 +935,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             proofPhoto,
           });
 
-          return {
+          pickedOrder = {
             ...ord,
             status: 'in_transit',
             courierId: assignedCourier.id,
@@ -812,10 +943,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             courierPhone: assignedCourier.phone,
             scanHistory: [...ord.scanHistory, scan],
           };
+          return pickedOrder;
         }
         return ord;
       })
     );
+
+    if (pickedOrder) {
+      saveOrderToSupabase(pickedOrder);
+    }
   };
 
   const recordDropoffIn = (orderId: string, merchantId: string) => {
@@ -894,6 +1030,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const completeDelivery = (orderId: string, signatureDataUrl: string, proofPhoto?: string) => {
     let payoutToAdd = 0;
     let targetCourierId = '';
+    let deliveredOrder: Order | null = null;
 
     setOrders((prev) =>
       prev.map((ord) => {
@@ -916,7 +1053,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             proofPhoto,
           });
 
-          return {
+          deliveredOrder = {
             ...ord,
             status: 'delivered',
             paymentStatus: 'paid',
@@ -925,20 +1062,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             finalDeliveryPhoto: proofPhoto,
             scanHistory: [...ord.scanHistory, scan],
           };
+          return deliveredOrder;
         }
         return ord;
       })
     );
 
+    if (deliveredOrder) {
+      saveOrderToSupabase(deliveredOrder);
+    }
+
     if (payoutToAdd > 0 && targetCourierId) {
       setCouriers((prev) => {
         const next = prev.map((c) => {
           if (c.id === targetCourierId) {
-            return {
+            const updated = {
               ...c,
               balanceAvailable: Math.round((c.balanceAvailable + payoutToAdd) * 100) / 100,
               totalDeliveries: c.totalDeliveries + 1,
             };
+            saveCourierToSupabase(updated);
+            return updated;
           }
           return c;
         });
@@ -976,10 +1120,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCouriers((prev) => {
       const next = prev.map((c) => {
         if (c.id === targetId) {
-          return {
+          const updated = {
             ...c,
             balanceAvailable: Math.max(0, Math.round((c.balanceAvailable - amount) * 100) / 100),
           };
+          saveCourierToSupabase(updated);
+          return updated;
         }
         return c;
       });
@@ -1030,6 +1176,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
+        isCloudConnected: isSupabaseConfigured(),
         authUser,
         login,
         signup,

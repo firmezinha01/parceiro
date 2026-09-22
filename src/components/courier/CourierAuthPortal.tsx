@@ -35,6 +35,7 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
     registerCourier,
     couriers,
     selectCourierSession,
+    isCloudConnected,
   } = useApp();
 
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -151,9 +152,18 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>Online</span>
+        <div className="flex items-center gap-1.5">
+          {isCloudConnected ? (
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold" title="Banco Supabase Conectado em Tempo Real">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Nuvem Ativa</span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-bold" title="Operando localmente. Configure VITE_SUPABASE_URL na Vercel para sincronizar entre aparelhos.">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+              <span>Modo Local</span>
+            </span>
+          )}
         </div>
       </header>
 

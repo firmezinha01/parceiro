@@ -16,6 +16,7 @@ export const Navbar: React.FC<NavbarProps> = () => {
     authUser,
     logout,
     resetAllData,
+    isCloudConnected,
   } = useApp();
 
   return (
@@ -36,6 +37,17 @@ export const Navbar: React.FC<NavbarProps> = () => {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                   Cliente
                 </span>
+                {isCloudConnected ? (
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" title="Supabase Conectado em Tempo Real">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Nuvem Realtime
+                  </span>
+                ) : (
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30" title="Operando localmente. Configure VITE_SUPABASE_URL na Vercel para sincronizar entre aparelhos.">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    Modo Local
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
                 Envios Locais Rápidos com Retirada e Entrega
