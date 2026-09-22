@@ -1,8 +1,23 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Order, CourierProfile } from '../types';
 
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+function sanitizeSupabaseUrl(rawUrl: string): string {
+  let url = (rawUrl || '').trim();
+  url = url.replace(/\/rest\/v1\/?$/i, '');
+  url = url.replace(/\/+$/, '');
+  return url;
+}
+
+// Credenciais padrão oficiais do projeto Supabase
+const DEFAULT_SUPABASE_URL = 'https://rrqodbmavuxvggvqqivz.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJycW9kYm1hdnV4dmdndnFxaXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwOTc3MjksImV4cCI6MjEwNTY3MzcyOX0.fnyMtQRDNiQbJWyoTjz3cro1WEy3JY1JsXXv9ffOptE';
+
+const rawUrl = (import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL).trim();
+const rawKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY).trim();
+
+const supabaseUrl = sanitizeSupabaseUrl(rawUrl);
+const supabaseAnonKey = rawKey;
 
 export const isSupabaseConfigured = (): boolean => {
   return Boolean(
