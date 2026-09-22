@@ -5,26 +5,18 @@ import {
   RotateCcw,
   LogOut,
   User,
-  Bike,
 } from 'lucide-react';
 
 interface NavbarProps {
-  onOpenCourierApp?: () => void;
+  // Configurações futuras
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenCourierApp }) => {
+export const Navbar: React.FC<NavbarProps> = () => {
   const {
     authUser,
     logout,
-    currentRole,
     resetAllData,
   } = useApp();
-
-  const roleLabels: Record<string, { label: string; color: string }> = {
-    client: { label: 'Cliente (Remetente / Destinatário)', color: 'bg-emerald-500' },
-    merchant: { label: 'Lojista (Ponto de Coleta)', color: 'bg-purple-500' },
-    admin: { label: 'Painel Central / Admin', color: 'bg-indigo-500' },
-  };
 
   return (
     <header className="bg-slate-900 text-white sticky top-0 z-40 shadow-md border-b border-slate-800">
@@ -42,38 +34,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCourierApp }) => {
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 shadow-2xs">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Produção
+                  Cliente
                 </span>
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
-                Rede Operacional de Retirada & Entrega Local
+                Envios Locais Rápidos com Retirada e Entrega
               </p>
             </div>
           </div>
 
-          {/* Ações de Celular e Perfil */}
+          {/* Ações e Perfil */}
           <div className="flex items-center gap-2 sm:gap-2.5">
-            {/* Atalho Direto para o Aplicativo do Entregador */}
-            {onOpenCourierApp && (
-              <button
-                onClick={onOpenCourierApp}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition shadow-sm cursor-pointer"
-                title="Acessar o aplicativo autônomo do Entregador"
-              >
-                <Bike className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">App do Entregador</span>
-                <span className="sm:hidden">Entregador</span>
-              </button>
-            )}
-
-            {/* Indicador de Perfil */}
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-xs">
-              <span className={`w-2 h-2 rounded-full ${roleLabels[currentRole]?.color || 'bg-amber-400'} animate-pulse`}></span>
-              <span className="text-slate-300 font-medium">
-                Visão: <strong className="text-white">{roleLabels[currentRole]?.label}</strong>
-              </span>
-            </div>
-
             {/* Reset de Banco para Produção Limpa */}
             <button
               onClick={() => {
@@ -81,7 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCourierApp }) => {
                   resetAllData();
                 }
               }}
-              title="Limpar banco de dados local"
+              title="Limpar dados locais"
               className="p-2 rounded-xl text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />

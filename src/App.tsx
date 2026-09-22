@@ -2,25 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { AuthScreen } from './components/auth/AuthScreen';
 import { Navbar } from './components/layout/Navbar';
-import { RoleSwitcher } from './components/layout/RoleSwitcher';
 import { QuoteForm } from './components/client/QuoteForm';
 import { TrackingView } from './components/client/TrackingView';
-import { MerchantDashboard } from './components/merchant/MerchantDashboard';
-import { AdminDashboard } from './components/admin/AdminDashboard';
 import { CourierStandaloneApp } from './components/courier/CourierStandaloneApp';
 import { Order } from './types';
 import {
   Send,
   Search,
-  Package,
   ShieldCheck,
-  CheckCircle2,
-  Sparkles,
-  ArrowRight,
-  Info,
   Bike,
   Store,
-  Layers,
 } from 'lucide-react';
 
 type ActivePortal = 'main' | 'courier';
@@ -46,24 +37,20 @@ function detectPortal(): ActivePortal {
   return 'main';
 }
 
-interface MainContentProps {
-  onOpenCourierApp: () => void;
-}
-
-const MainContent: React.FC<MainContentProps> = ({ onOpenCourierApp }) => {
+const MainContent: React.FC = () => {
   const { authUser, currentRole, setCurrentRole, orders, setActiveOrderForTracking } = useApp();
   const [clientTab, setClientTab] = useState<'quote' | 'tracking'>('quote');
 
-  // Se o papel estiver como 'courier' (legado), ajusta para 'client' pois o entregador agora tem app próprio
+  // Garante que o papel esteja sempre como 'client' no portal principal
   useEffect(() => {
-    if ((currentRole as any) === 'courier') {
+    if (currentRole !== 'client') {
       setCurrentRole('client');
     }
   }, [currentRole, setCurrentRole]);
 
-  // Se o usuário não estiver logado no portal principal, exibe a tela de login / cadastro / Google
+  // Se o usuário não estiver logado no portal principal, exibe a tela de login / cadastro
   if (!authUser) {
-    return <AuthScreen onOpenCourierApp={onOpenCourierApp} />;
+    return <AuthScreen />;
   }
 
   const handleOrderCreated = (order: Order) => {
@@ -73,77 +60,57 @@ const MainContent: React.FC<MainContentProps> = ({ onOpenCourierApp }) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100/70 text-slate-900">
-      {/* Barra de Navegação Superior do Portal Principal */}
-      <Navbar onOpenCourierApp={onOpenCourierApp} />
+      {/* Barra de Navegação Superior do Portal do Cliente */}
+      <Navbar />
 
-      {/* Alternador de Perfis (Cliente, Ponto Lojista, Painel Central) */}
-      <RoleSwitcher onOpenCourierApp={onOpenCourierApp} />
-
-      {/* Área Principal de Conteúdo */}
+      {/* Área Principal de Conteúdo do Cliente */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* ========================================================
-            1. VISÃO DO CLIENTE (REMETENTE / DESTINATÁRIO)
-        ======================================================== */}
-        {currentRole === 'client' && (
-          <div className="space-y-6">
-            {/* Tabs do Cliente */}
-            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setClientTab('quote')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                    clientTab === 'quote'
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  <Send className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Nova Cotação de Envio</span>
-                </button>
+        <div className="space-y-6">
+          {/* Tabs do Cliente */}
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setClientTab('quote')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  clientTab === 'quote'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Send className="w-3.5 h-3.5 text-amber-400" />
+                <span>Nova Cotação de Envio</span>
+              </button>
 
-                <button
-                  onClick={() => setClientTab('tracking')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                    clientTab === 'tracking'
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  <Search className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Rastrear Encomenda & Etiqueta</span>
-                  {orders.length > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-amber-500 text-slate-950">
-                      {orders.length}
-                    </span>
-                  )}
-                </button>
-              </div>
-
-              <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
-                Rede de Entregas Locais • Moto & Carro
-              </span>
+              <button
+                onClick={() => setClientTab('tracking')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  clientTab === 'tracking'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Search className="w-3.5 h-3.5 text-amber-400" />
+                <span>Rastrear Encomenda & Etiqueta</span>
+                {orders.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-amber-500 text-slate-950">
+                    {orders.length}
+                  </span>
+                )}
+              </button>
             </div>
 
-            {/* Conteúdo da Tab */}
-            {clientTab === 'quote' ? (
-              <QuoteForm onOrderCreated={handleOrderCreated} />
-            ) : (
-              <TrackingView />
-            )}
+            <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+              Rede de Entregas Locais • Moto & Carro
+            </span>
           </div>
-        )}
 
-        {/* ========================================================
-            2. VISÃO DO LOJISTA PARCEIRO (PONTO DE COLETA DROP-OFF)
-        ======================================================== */}
-        {currentRole === 'merchant' && <MerchantDashboard />}
-
-        {/* ========================================================
-            3. VISÃO DO ADMINISTRADOR / PAINEL CENTRAL (GESTÃO DE FROTAS)
-        ======================================================== */}
-        {currentRole === 'admin' && (
-          <AdminDashboard onOpenCourierApp={() => onOpenCourierApp()} />
-        )}
+          {/* Conteúdo da Tab */}
+          {clientTab === 'quote' ? (
+            <QuoteForm onOrderCreated={handleOrderCreated} />
+          ) : (
+            <TrackingView />
+          )}
+        </div>
       </main>
 
       {/* Rodapé Informativo */}
@@ -163,7 +130,7 @@ const MainContent: React.FC<MainContentProps> = ({ onOpenCourierApp }) => {
               <Bike className="w-3.5 h-3.5 text-amber-600" /> Repasse por Componente
             </span>
             <span className="flex items-center gap-1">
-              <Store className="w-3.5 h-3.5 text-purple-600" /> Pontos Lojistas Drop-off
+              <Store className="w-3.5 h-3.5 text-purple-600" /> Entregadores Credenciados
             </span>
           </div>
         </div>
@@ -183,18 +150,12 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const navigateToPortal = (target: ActivePortal) => {
-    const targetUrl = target === 'courier' ? '/entregador' : '/';
-    window.history.pushState({}, '', targetUrl);
-    setActivePortal(target);
-  };
-
   return (
     <AppProvider>
       {activePortal === 'courier' ? (
-        <CourierStandaloneApp onBackToMain={() => navigateToPortal('main')} />
+        <CourierStandaloneApp />
       ) : (
-        <MainContent onOpenCourierApp={() => navigateToPortal('courier')} />
+        <MainContent />
       )}
     </AppProvider>
   );

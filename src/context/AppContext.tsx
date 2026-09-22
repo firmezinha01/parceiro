@@ -409,8 +409,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const saved = localStorage.getItem(PROD_STORAGE_KEYS.COURIER_AUTH_SESSION);
       if (saved) return JSON.parse(saved);
-      const initial = loadInitialCouriers();
-      return initial[0] || null;
+      return null;
     } catch {
       return null;
     }
@@ -420,8 +419,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const saved = localStorage.getItem(PROD_STORAGE_KEYS.CURRENT_COURIER);
       if (saved) return JSON.parse(saved);
-      const initial = loadInitialCouriers();
-      return initial[0] || null;
+      return null;
     } catch {
       return null;
     }
@@ -429,6 +427,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [dropoffPoints, setDropoffPoints] = useState<DropoffPoint[]>(loadInitialDropoffs);
   const [orders, setOrders] = useState<Order[]>(loadInitialOrders);
+
+  // Sincronização em tempo real entre abas do navegador (Cliente e Entregador)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === PROD_STORAGE_KEYS.ORDERS && e.newValue) {
+        try {
+          const updatedOrders = JSON.parse(e.newValue);
+          if (Array.isArray(updatedOrders)) {
+            setOrders(updatedOrders);
+          }
+        } catch (err) {
+          console.warn('Erro ao sincronizar pedidos via storage event:', err);
+        }
+      }
+      if (e.key === PROD_STORAGE_KEYS.COURIERS && e.newValue) {
+        try {
+          const updatedCouriers = JSON.parse(e.newValue);
+          if (Array.isArray(updatedCouriers)) {
+            setCouriers(updatedCouriers);
+          }
+        } catch (err) {
+          console.warn('Erro ao sincronizar entregadores via storage event:', err);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Pedido em foco no rastreio
   const [activeOrderForTracking, setActiveOrderForTracking] = useState<Order | null>(null);
@@ -990,8 +1017,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setClients([]);
     setCurrentClientState(null);
     setCouriers(DEFAULT_DEMO_COURIERS);
-    setCourierProfileState(DEFAULT_DEMO_COURIERS[0]);
-    setCourierSession(DEFAULT_DEMO_COURIERS[0]);
+    setCourierProfileState(null);
+    setCourierSession(null);
     setDropoffPoints([]);
     setActiveOrderForTracking(null);
   };

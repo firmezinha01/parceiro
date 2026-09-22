@@ -29,7 +29,7 @@ interface CourierAuthPortalProps {
   onBackToMain?: () => void;
 }
 
-export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = ({ onBackToMain }) => {
+export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
   const {
     loginCourier,
     registerCourier,
@@ -151,19 +151,27 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = ({ onBackToMa
           </div>
         </div>
 
-        {onBackToMain && (
-          <button
-            onClick={onBackToMain}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white text-xs font-semibold border border-slate-800 transition cursor-pointer"
-          >
-            <span>Portal Principal</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Online</span>
+        </div>
       </header>
 
       {/* Conteúdo Central */}
-      <main className="flex-1 max-w-md w-full mx-auto px-4 py-8 flex flex-col justify-center">
+      <main className="flex-1 max-w-md w-full mx-auto px-4 py-6 flex flex-col justify-center">
+        {/* Dica de Instalação no Celular / Baixar App */}
+        <div className="mb-4 p-3.5 bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 rounded-2xl flex items-center gap-3 shadow-lg">
+          <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-lg shrink-0 shadow-md">
+            📲
+          </div>
+          <div className="text-xs">
+            <strong className="text-white block font-bold">Baixar o App no seu Celular:</strong>
+            <span className="text-slate-300 text-[11px] leading-relaxed block">
+              No navegador, toque em Compartilhar (ou no menu ⋮) e selecione <strong>"Adicionar à Tela de Início"</strong> para instalar o App.
+            </span>
+          </div>
+        </div>
+
         {/* Card Principal */}
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>

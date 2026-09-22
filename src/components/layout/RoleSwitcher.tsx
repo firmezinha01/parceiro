@@ -1,13 +1,9 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { UserRole } from '../../types';
-import { User, Store, ShieldAlert, Bike, ExternalLink } from 'lucide-react';
+import { User, Store, ShieldAlert } from 'lucide-react';
 
-interface RoleSwitcherProps {
-  onOpenCourierApp?: () => void;
-}
-
-export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ onOpenCourierApp }) => {
+export const RoleSwitcher: React.FC = () => {
   const { currentRole, setCurrentRole, orders, dropoffPoints, couriers } = useApp();
 
   const packagesInDropoff = orders.filter((o) => o.status === 'at_dropoff').length;
@@ -97,19 +93,6 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ onOpenCourierApp }) 
               })}
             </div>
           </div>
-
-          {/* Botão em destaque para abrir o Aplicativo do Entregador Autônomo */}
-          {onOpenCourierApp && (
-            <button
-              onClick={onOpenCourierApp}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-800 hover:border-amber-400/50 text-xs font-bold shadow-xs transition shrink-0 cursor-pointer"
-              title="Acessar o aplicativo autônomo e isolado do entregador parceiro"
-            >
-              <Bike className="w-4 h-4 text-amber-400" />
-              <span>App do Entregador</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-          )}
         </div>
       </div>
     </div>

@@ -56,7 +56,7 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = ({ onBa
 
   // Se nenhum entregador estiver logado nesta sessão autônoma, exibe o portal de login/cadastro
   if (!courierSession) {
-    return <CourierAuthPortal onBackToMain={onBackToMain} />;
+    return <CourierAuthPortal />;
   }
 
   const isOnline = courierSession.isOnline;
@@ -208,18 +208,6 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = ({ onBa
                   </div>
 
                   <div className="border-t border-slate-800 pt-1 space-y-1">
-                    {onBackToMain && (
-                      <button
-                        onClick={() => {
-                          setShowAccountSwitcher(false);
-                          onBackToMain();
-                        }}
-                        className="w-full p-2 rounded-xl hover:bg-slate-800 text-slate-300 flex items-center gap-2 cursor-pointer"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
-                        <span>Abrir Portal Principal</span>
-                      </button>
-                    )}
                     <button
                       onClick={() => {
                         setShowAccountSwitcher(false);
@@ -617,21 +605,11 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = ({ onBa
               <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
                 <button
                   onClick={logoutCourier}
-                  className="px-4 py-2.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer"
+                  className="w-full py-2.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Desconectar Deste Entregador</span>
                 </button>
-
-                {onBackToMain && (
-                  <button
-                    onClick={onBackToMain}
-                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
-                  >
-                    <span>Portal Principal</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </button>
-                )}
               </div>
             </div>
           </div>

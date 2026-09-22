@@ -13,15 +13,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Truck,
-  Bike,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-interface AuthScreenProps {
-  onOpenCourierApp?: () => void;
-}
-
-export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenCourierApp }) => {
+export const AuthScreen: React.FC = () => {
   const { login, signup, loginWithGoogle } = useApp();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
 
@@ -367,24 +362,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenCourierApp }) => {
             <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <div className="leading-snug">
               <strong className="text-slate-200 block mb-0.5">Segurança & Conformidade:</strong>
-              Após o login, a validação de documentos (CPF ou CNPJ) é realizada separadamente dentro do portal.
+              Acesso seguro para remetentes e destinatários de encomendas.
             </div>
           </div>
         </div>
-
-        {/* Atalho para Entregadores Parceiros */}
-        {onOpenCourierApp && (
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={onOpenCourierApp}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-800 hover:border-amber-400/40 text-xs font-bold transition cursor-pointer shadow-md"
-            >
-              <Bike className="w-4 h-4 text-amber-400" />
-              <span>Você é Entregador? Abra o Aplicativo do Entregador</span>
-            </button>
-          </div>
-        )}
 
         {/* Rodapé Seguro */}
         <p className="text-center text-[11px] text-slate-600">
