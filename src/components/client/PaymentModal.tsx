@@ -21,7 +21,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const pixKeySimulated = `00020126580014br.gov.bcb.pix0136${Math.random().toString(36).substring(2, 15)}520400005303986540${amount.toFixed(2)}5802BR5920CORREIOS PARCEIROS6009SAO PAULO62070503***6304`;
+  const pixKeySimulated = `00020126580014br.gov.bcb.pix0136${Math.random().toString(36).substring(2, 15)}520400005303986540${amount.toFixed(2)}5802BR5908PARCEIRO6009SAO PAULO62070503***6304`;
 
   const handleCopyPix = () => {
     navigator.clipboard.writeText(pixKeySimulated);

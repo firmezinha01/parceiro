@@ -117,7 +117,7 @@ const MainContent: React.FC = () => {
       <footer className="bg-white border-t border-slate-200 py-6 text-xs text-slate-500 no-print">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="font-extrabold text-slate-900">Correios Parceiros</span>
+            <span className="font-extrabold text-slate-900">Parceiro</span>
             <span>—</span>
             <span>Plataforma de Retirada e Entrega Descentralizada</span>
           </div>

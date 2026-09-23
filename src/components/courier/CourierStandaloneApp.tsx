@@ -35,11 +35,9 @@ interface CourierStandaloneAppProps {
   onBackToMain?: () => void;
 }
 
-export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = ({ onBackToMain }) => {
+export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = () => {
   const {
     courierSession,
-    couriers,
-    selectCourierSession,
     toggleCourierOnline,
     logoutCourier,
     orders,
@@ -52,7 +50,6 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = ({ onBa
   const [selectedOrderForNavigation, setSelectedOrderForNavigation] = useState<Order | null>(null);
   const [alarmOrder, setAlarmOrder] = useState<Order | null>(null);
   const [dismissedAlarmIds, setDismissedAlarmIds] = useState<Set<string>>(new Set());
-  const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
 
   // Se nenhum entregador estiver logado nesta sessão autônoma, exibe o portal de login/cadastro
   if (!courierSession) {
@@ -169,59 +166,19 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = ({ onBa
               <span>{formatCurrency(courierSession.balanceAvailable)}</span>
             </button>
 
-            {/* Botão de Trocar Conta / Sair */}
-            <div className="relative">
-              <button
-                onClick={() => setShowAccountSwitcher(!showAccountSwitcher)}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer"
-                title="Opções de Conta"
-              >
-                <Users className="w-4 h-4" />
-              </button>
-
-              {showAccountSwitcher && (
-                <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 text-xs">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 px-2 py-1 block">
-                    Alternar Entregador Parceiro:
-                  </span>
-                  <div className="space-y-1 mb-2">
-                    {couriers.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => {
-                          selectCourierSession(c.id);
-                          setShowAccountSwitcher(false);
-                        }}
-                        className={`w-full p-2 rounded-xl flex items-center justify-between text-left transition cursor-pointer ${
-                          c.id === courierSession.id
-                            ? 'bg-amber-400 text-slate-950 font-bold'
-                            : 'hover:bg-slate-800 text-slate-300'
-                        }`}
-                      >
-                        <div className="truncate">
-                          <div className="truncate text-xs">{c.name}</div>
-                          <div className="text-[10px] opacity-75 font-mono">{c.modal.toUpperCase()} • {c.vehiclePlate}</div>
-                        </div>
-                        {c.id === courierSession.id && <CheckCircle2 className="w-4 h-4 shrink-0" />}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="border-t border-slate-800 pt-1 space-y-1">
-                    <button
-                      onClick={() => {
-                        setShowAccountSwitcher(false);
-                        logoutCourier();
-                      }}
-                      className="w-full p-2 rounded-xl hover:bg-rose-500/20 text-rose-400 flex items-center gap-2 cursor-pointer font-bold"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Sair do Aplicativo</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Botão Sair da Conta */}
+            <button
+              onClick={() => {
+                if (confirm('Deseja realmente sair da sua conta de entregador?')) {
+                  logoutCourier();
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-slate-700 transition cursor-pointer text-xs font-bold"
+              title="Sair da Conta"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sair</span>
+            </button>
           </div>
         </div>
 

@@ -307,7 +307,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
                 </ol>
                 <div className="p-2.5 bg-white rounded-xl border border-emerald-200 text-[11px] text-emerald-900 flex items-center gap-2">
                   <PackageCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>O ícone oficial do <strong>Correios Parceiros</strong> será criado na sua tela inicial e funcionará como um app nativo, com câmera e scanner liberados!</span>
+                  <span>O ícone oficial do <strong>Parceiro</strong> será criado na sua tela inicial e funcionará como um app nativo, com câmera e scanner liberados!</span>
                 </div>
               </div>
             )}

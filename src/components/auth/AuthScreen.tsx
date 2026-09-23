@@ -109,7 +109,7 @@ export const AuthScreen: React.FC = () => {
 
           <div className="flex items-center justify-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Correios <span className="text-amber-400">Parceiros</span>
+              <span className="text-amber-400">Parceiro</span>
             </h1>
           </div>
 
@@ -369,7 +369,7 @@ export const AuthScreen: React.FC = () => {
 
         {/* Rodapé Seguro */}
         <p className="text-center text-[11px] text-slate-600">
-          Rede Segura com Criptografia de Ponta a Ponta • Correios Parceiros 2026
+          Rede Segura com Criptografia de Ponta a Ponta • Parceiro 2026
         </p>
       </div>
     </div>

@@ -328,7 +328,7 @@ export const RegisterCourierModal: React.FC<RegisterCourierModalProps> = ({ onCl
                 onChange={(e) => setTermsAccepted(e.target.checked)}
                 className="w-4 h-4 accent-amber-600 rounded"
               />
-              <span>Li e aceito os termos do programa Correios Parceiros</span>
+              <span>Li e aceito os termos do programa Parceiro</span>
             </label>
           </div>
 

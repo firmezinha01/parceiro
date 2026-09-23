@@ -1,5 +1,5 @@
-// Service Worker - Correios Parceiros PWA
-const CACHE_NAME = 'correios-parceiros-v1';
+// Service Worker - Parceiro PWA
+const CACHE_NAME = 'parceiro-v2';
 
 const ASSETS_TO_PRECACHE = [
   '/',

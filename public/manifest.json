@@ -1,7 +1,7 @@
 {
-  "id": "correios-parceiros-pwa",
-  "name": "Correios Parceiros — App de Entregas",
-  "short_name": "Correios",
+  "id": "parceiro-pwa",
+  "name": "Parceiro — App de Entregas",
+  "short_name": "Parceiro",
   "description": "Aplicativo de Coletas e Entregas Locais com Rastreamento em Tempo Real e Repasse Transparente",
   "start_url": "/",
   "scope": "/",

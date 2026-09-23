@@ -31,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-amber-400 via-amber-200 to-white bg-clip-text text-transparent">
-                  Correios Parceiros
+                  Parceiro
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 shadow-2xs">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>

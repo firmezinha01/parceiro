@@ -33,8 +33,6 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
   const {
     loginCourier,
     registerCourier,
-    couriers,
-    selectCourierSession,
     isCloudConnected,
   } = useApp();
 
@@ -42,7 +40,7 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
 
   // Formulário de Login
   const [loginCredential, setLoginCredential] = useState('');
-  const [loginPassword, setLoginPassword] = useState('1234');
+  const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -104,8 +102,13 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
     e.preventDefault();
     setLoginError(null);
 
-    if (!name || !document || !cnh || !vehiclePlate) {
-      alert('Por favor, preencha os campos obrigatórios (Nome, CPF, CNH e Placa).');
+    if (!name || !document || !cnh || !vehiclePlate || !password) {
+      alert('Por favor, preencha os campos obrigatórios (Nome, CPF, CNH, Placa e Senha de Acesso).');
+      return;
+    }
+
+    if (password.length < 4) {
+      alert('A senha deve ter no mínimo 4 caracteres.');
       return;
     }
 
@@ -117,7 +120,7 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
     registerCourier({
       name,
       email,
-      password: password || '1234',
+      password: password,
       document,
       cnh,
       phone,
@@ -143,7 +146,7 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
           </div>
           <div>
             <h1 className="text-sm font-black tracking-tight flex items-center gap-1.5 text-white">
-              Correios Parceiros
+              Parceiro
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
                 App do Entregador
               </span>
@@ -288,47 +291,6 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </form>
-
-              {/* SEÇÃO DE TESTE RÁPIDO COM 1 CLIQUE */}
-              <div className="pt-4 border-t border-slate-800">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2 text-center">
-                  ⚡ Atalhos de Teste — Entrar com 1 Clique:
-                </span>
-
-                <div className="grid grid-cols-1 gap-2">
-                  {couriers.slice(0, 2).map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => selectCourierSession(c.id)}
-                      className="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-amber-400/40 rounded-xl flex items-center justify-between text-left transition group cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <img
-                          src={c.avatarUrl}
-                          alt={c.name}
-                          className="w-8 h-8 rounded-lg object-cover border border-amber-400/50"
-                        />
-                        <div>
-                          <div className="text-xs font-bold text-white group-hover:text-amber-400 flex items-center gap-1.5">
-                            {c.name}
-                            <span className="text-[9px] uppercase px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono">
-                              {c.modal}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            {c.vehicleModel || c.vehiclePlate} • R$ {c.balanceAvailable.toFixed(2)}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-amber-400 group-hover:translate-x-0.5 transition-transform">
-                        <span>Acessar</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
 
@@ -479,6 +441,20 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Crie sua Senha de Acesso *
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Mínimo 4 dígitos para seu login"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 font-mono"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
                     Chave Pix para Recebimento de Corridas
                   </label>
                   <input
@@ -570,7 +546,7 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
 
       {/* Footer */}
       <footer className="p-4 text-center text-[11px] text-slate-500 border-t border-slate-900">
-        Correios Parceiros • Aplicativo Exclusivo para Entregadores Credenciados
+        Parceiro • Aplicativo Exclusivo para Entregadores Credenciados
       </footer>
     </div>
   );
