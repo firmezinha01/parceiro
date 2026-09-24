@@ -18,10 +18,11 @@ import {
   ExternalLink,
   ChevronRight,
   User,
+  XCircle,
 } from 'lucide-react';
 
 export const TrackingView: React.FC = () => {
-  const { orders, activeOrderForTracking, setActiveOrderForTracking } = useApp();
+  const { orders, activeOrderForTracking, setActiveOrderForTracking, cancelOrder } = useApp();
   const [searchInput, setSearchInput] = useState('');
   const [showLabelModal, setShowLabelModal] = useState(false);
 
@@ -117,9 +118,25 @@ export const TrackingView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            {(currentOrder.status === 'created' || currentOrder.status === 'at_dropoff') && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Deseja realmente cancelar esta corrida?')) {
+                    cancelOrder(currentOrder.id, 'Cancelado pelo cliente antes da coleta');
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold text-xs transition cursor-pointer"
+                title="Cancelar pedido de entrega"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                <span>Cancelar Corrida</span>
+              </button>
+            )}
+
             <button
               onClick={() => setShowLabelModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-sm transition"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-sm transition cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5" />
               <span>Ver Etiqueta com QR Code</span>

@@ -25,6 +25,7 @@ import {
   RefreshCw,
   CheckCircle2,
   Navigation,
+  XCircle,
 } from 'lucide-react';
 
 interface QuoteFormProps {
@@ -36,6 +37,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOrderCreated }) => {
     pricingConfig,
     dropoffPoints,
     createOrder,
+    cancelOrder,
     currentClient,
     setCurrentClient,
     clients,
@@ -991,14 +993,16 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOrderCreated }) => {
               <button
                 type="button"
                 onClick={() => {
-                  const ord = createdOrderForDispatch;
-                  setCreatedOrderForDispatch(null);
-                  setCurrentRole('courier');
+                  if (confirm('Tem certeza de que deseja cancelar esta corrida?')) {
+                    const ord = createdOrderForDispatch;
+                    cancelOrder(ord.id, 'Cancelado pelo cliente antes da coleta');
+                    setCreatedOrderForDispatch(null);
+                  }
                 }}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 transition cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-600/25 transition cursor-pointer"
               >
-                <Bike className="w-4 h-4" />
-                <span>Ir para a Visão de Entregador (Testar Aceite & Navegação)</span>
+                <XCircle className="w-4 h-4" />
+                <span>Cancelar Corrida</span>
               </button>
 
               <button

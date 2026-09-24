@@ -5,24 +5,25 @@ import { Wallet, ArrowDownRight, ArrowUpRight, TrendingUp, DollarSign, CheckCirc
 import confetti from 'canvas-confetti';
 
 export const CourierWallet: React.FC = () => {
-  const { courierProfile, withdrawCourierBalance, orders } = useApp();
+  const { courierProfile, courierSession, withdrawCourierBalance, orders } = useApp();
+  const currentCourier = courierSession || courierProfile;
   const [withdrawAmount, setWithdrawAmount] = useState<string>('');
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
-  const completedOrders = orders.filter((o) => o.status === 'delivered' && o.courierId === courierProfile.id);
+  const completedOrders = orders.filter((o) => o.status === 'delivered' && o.courierId === currentCourier.id);
 
   const handleWithdraw = (e: React.FormEvent) => {
     e.preventDefault();
     const amount = parseFloat(withdrawAmount);
-    if (!amount || amount <= 0 || amount > courierProfile.balanceAvailable) {
+    if (!amount || amount <= 0 || amount > (currentCourier.balanceAvailable ?? 0)) {
       alert('Valor inválido para saque.');
       return;
     }
 
     setIsWithdrawing(true);
     setTimeout(() => {
-      withdrawCourierBalance(amount);
+      withdrawCourierBalance(amount, currentCourier.id);
       setIsWithdrawing(false);
       setWithdrawAmount('');
       setSuccessMsg(`Transferência Pix de ${formatCurrency(amount)} realizada com sucesso para sua chave!`);
@@ -41,11 +42,11 @@ export const CourierWallet: React.FC = () => {
             <Wallet className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-3xl font-black text-amber-400 font-mono mt-2">
-            {formatCurrency(courierProfile.balanceAvailable)}
+            {formatCurrency(currentCourier.balanceAvailable ?? 0)}
           </div>
           <div className="text-[11px] text-slate-400 mt-2 flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-            Chave Pix: <strong className="text-slate-300 font-mono truncate">{courierProfile.pixKey}</strong>
+            Chave Pix: <strong className="text-slate-300 font-mono truncate">{currentCourier.pixKey || 'Não cadastrada'}</strong>
           </div>
         </div>
 
@@ -55,10 +56,10 @@ export const CourierWallet: React.FC = () => {
             <TrendingUp className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="text-3xl font-black text-slate-900 font-mono mt-2">
-            {courierProfile.totalDeliveries}
+            {currentCourier.totalDeliveries ?? 0}
           </div>
           <div className="text-[11px] text-emerald-600 font-semibold mt-2">
-            ★ {courierProfile.rating.toFixed(2)} / 5.0 (Score Excelente)
+            ★ {(currentCourier.rating ?? 5.0).toFixed(2)} / 5.0 (Score Excelente)
           </div>
         </div>
 
@@ -68,10 +69,10 @@ export const CourierWallet: React.FC = () => {
             <ShieldCheck className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-base font-black text-slate-900 mt-2 uppercase">
-            {courierProfile.modal === 'moto' ? 'Moto Express' : 'Carro / Utilitário'}
+            {currentCourier.modal === 'moto' ? 'Moto Express' : 'Carro / Utilitário'}
           </div>
           <div className="text-[11px] text-slate-500 mt-1 font-mono">
-            {courierProfile.vehiclePlate}
+            {currentCourier.vehiclePlate}
           </div>
         </div>
       </div>

@@ -155,7 +155,7 @@ export interface ScanEvent {
   id: string;
   orderId: string;
   trackingCode: string;
-  stepType: 'created' | 'dropoff_in' | 'pickup_courier' | 'dropoff_out' | 'final_delivery';
+  stepType: 'created' | 'dropoff_in' | 'pickup_courier' | 'dropoff_out' | 'final_delivery' | 'cancelled';
   description: string;
   timestamp: string;
   operatorId: string;

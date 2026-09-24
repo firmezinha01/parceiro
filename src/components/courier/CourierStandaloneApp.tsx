@@ -35,9 +35,13 @@ interface CourierStandaloneAppProps {
   onBackToMain?: () => void;
 }
 
-export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = () => {
+interface CourierDashboardViewProps {
+  courierSession: CourierProfile;
+  onBackToMain?: () => void;
+}
+
+const CourierDashboardView: React.FC<CourierDashboardViewProps> = ({ courierSession }) => {
   const {
-    courierSession,
     toggleCourierOnline,
     logoutCourier,
     orders,
@@ -49,18 +53,25 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = () => {
   const [activeTab, setActiveTab] = useState<'radar' | 'my_orders' | 'wallet' | 'profile'>('radar');
   const [selectedOrderForNavigation, setSelectedOrderForNavigation] = useState<Order | null>(null);
   const [alarmOrder, setAlarmOrder] = useState<Order | null>(null);
-  const [dismissedAlarmIds, setDismissedAlarmIds] = useState<Set<string>>(new Set());
 
-  // Se nenhum entregador estiver logado nesta sessão autônoma, exibe o portal de login/cadastro
-  if (!courierSession) {
-    return <CourierAuthPortal />;
-  }
+  // Armazena e persiste IDs de chamados ignorados exclusivamente por este entregador
+  const [ignoredOrderIds, setIgnoredOrderIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(`parceiro_ignored_orders_${courierSession.id}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
 
-  const isOnline = courierSession.isOnline;
+  const isOnline = Boolean(courierSession.isOnline);
 
-  // Pedidos disponíveis no radar: status 'created' ou 'at_dropoff' e sem entregador alocado
+  // Pedidos disponíveis no radar: status 'created' ou 'at_dropoff', sem entregador alocado e NÃO ignorados por este entregador
   const availableOrders = orders.filter(
-    (o) => (o.status === 'created' || o.status === 'at_dropoff') && (!o.courierId || o.courierId === '')
+    (o) =>
+      (o.status === 'created' || o.status === 'at_dropoff') &&
+      (!o.courierId || o.courierId === '') &&
+      !ignoredOrderIds.has(o.id)
   );
 
   // Pedidos atribuídos exclusivamente a este entregador
@@ -74,6 +85,27 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = () => {
     (o) => o.courierId === courierSession.id && o.status === 'delivered'
   );
 
+  // Ignora permanentemente um chamado no radar para este entregador
+  const handleIgnoreOrder = (orderId: string) => {
+    audioAlert.stopCourierAlarm();
+    if (alarmOrder?.id === orderId) {
+      setAlarmOrder(null);
+    }
+    setIgnoredOrderIds((prev) => {
+      const updated = new Set(prev);
+      updated.add(orderId);
+      try {
+        localStorage.setItem(
+          `parceiro_ignored_orders_${courierSession.id}`,
+          JSON.stringify(Array.from(updated))
+        );
+      } catch (err) {
+        console.warn('Erro ao salvar pedidos ignorados:', err);
+      }
+      return updated;
+    });
+  };
+
   // Escuta novos chamados no radar apenas se o entregador estiver ONLINE
   useEffect(() => {
     if (!isOnline) {
@@ -82,14 +114,14 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = () => {
       return;
     }
 
-    const unread = availableOrders.find((o) => !dismissedAlarmIds.has(o.id));
+    const unread = availableOrders.find((o) => !ignoredOrderIds.has(o.id));
     if (unread) {
       setAlarmOrder(unread);
     } else {
       setAlarmOrder(null);
       audioAlert.stopCourierAlarm();
     }
-  }, [availableOrders.length, isOnline, dismissedAlarmIds]);
+  }, [availableOrders.length, isOnline, ignoredOrderIds]);
 
   const handleAcceptOrder = (orderId: string) => {
     audioAlert.stopCourierAlarm();
@@ -107,6 +139,13 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = () => {
     toggleCourierOnline(courierSession.id);
   };
 
+  const handleLogout = () => {
+    if (confirm('Deseja realmente sair da sua conta de entregador?')) {
+      audioAlert.stopCourierAlarm();
+      logoutCourier();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-amber-400 selection:text-slate-950 pb-20 sm:pb-8">
       {/* ========================================================
@@ -118,7 +157,7 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = () => {
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
               <img
-                src={courierSession.avatarUrl}
+                src={courierSession.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
                 alt={courierSession.name}
                 className="w-11 h-11 rounded-2xl object-cover border-2 border-amber-400 shadow-sm"
               />
@@ -163,16 +202,12 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = () => {
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-amber-400/40 text-amber-400 text-xs font-mono font-bold transition cursor-pointer"
             >
               <Wallet className="w-3.5 h-3.5 text-amber-400" />
-              <span>{formatCurrency(courierSession.balanceAvailable)}</span>
+              <span>{formatCurrency(courierSession.balanceAvailable ?? 0)}</span>
             </button>
 
             {/* Botão Sair da Conta */}
             <button
-              onClick={() => {
-                if (confirm('Deseja realmente sair da sua conta de entregador?')) {
-                  logoutCourier();
-                }
-              }}
+              onClick={handleLogout}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-slate-700 transition cursor-pointer text-xs font-bold"
               title="Sair da Conta"
             >
@@ -372,14 +407,25 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = () => {
                           </div>
                         </div>
 
-                        {/* Botão de Aceite Exclusivo */}
-                        <button
-                          onClick={() => handleAcceptOrder(order.id)}
-                          className="mt-4 w-full py-3 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
-                        >
-                          <span>Aceitar Corrida</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
+                        {/* Ações: Ignorar e Aceitar */}
+                        <div className="mt-4 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleIgnoreOrder(order.id)}
+                            className="py-3 px-3.5 rounded-xl border border-slate-700 hover:border-rose-500/50 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 font-bold text-xs transition cursor-pointer"
+                            title="Não tenho interesse nesta corrida"
+                          >
+                            Ignorar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAcceptOrder(order.id)}
+                            className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
+                          >
+                            <span>Aceitar Corrida</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -561,7 +607,7 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = () => {
 
               <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
                 <button
-                  onClick={logoutCourier}
+                  onClick={handleLogout}
                   className="w-full py-2.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
@@ -636,11 +682,7 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = () => {
         <IncomingOrderAlarmModal
           order={alarmOrder}
           onAccept={() => handleAcceptOrder(alarmOrder.id)}
-          onDismiss={() => {
-            audioAlert.stopCourierAlarm();
-            setDismissedAlarmIds((prev) => new Set(prev).add(alarmOrder.id));
-            setAlarmOrder(null);
-          }}
+          onDismiss={() => handleIgnoreOrder(alarmOrder.id)}
         />
       )}
 
@@ -655,4 +697,16 @@ export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = () => {
       )}
     </div>
   );
+};
+
+export const CourierStandaloneApp: React.FC<CourierStandaloneAppProps> = ({ onBackToMain }) => {
+  const { courierSession } = useApp();
+
+  // Quando nenhum entregador estiver logado, exibe apenas a tela de autenticação
+  if (!courierSession) {
+    return <CourierAuthPortal onBackToMain={onBackToMain} />;
+  }
+
+  // Quando logado, monta o painel do entregador com todos os hooks internos isolados
+  return <CourierDashboardView courierSession={courierSession} onBackToMain={onBackToMain} />;
 };

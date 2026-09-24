@@ -61,6 +61,7 @@ export interface AppContextType {
   setActiveOrderForTracking: (order: Order | null) => void;
   updatePricingConfig: (config: Partial<PricingConfig>) => void;
   createOrder: (orderData: Omit<Order, 'id' | 'trackingCode' | 'createdAt' | 'status' | 'scanHistory'>) => Order;
+  cancelOrder: (orderId: string, reason?: string) => void;
   acceptOrder: (orderId: string, customCourier?: CourierProfile) => void;
   recordDropoffIn: (orderId: string, merchantId: string) => void;
   recordDropoffOut: (orderId: string, merchantId: string) => void;
@@ -873,6 +874,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newOrder;
   };
 
+  const cancelOrder = (orderId: string, reason: string = 'Corrida cancelada pelo cliente') => {
+    let cancelledOrder: Order | null = null;
+    setOrders((prev) =>
+      prev.map((ord) => {
+        if (ord.id === orderId) {
+          const scan = createScanEvent({
+            orderId: ord.id,
+            trackingCode: ord.trackingCode,
+            stepType: 'cancelled',
+            description: `Cancelamento: ${reason}`,
+            operatorId: authUser?.id || ord.sender?.name || 'cliente',
+            operatorName: authUser?.name || ord.sender?.name || 'Cliente',
+            operatorRole: 'client',
+            locationName: `${ord.sender.address.street}, ${ord.sender.address.number}`,
+            coordinates: { lat: ord.sender.address.lat, lng: ord.sender.address.lng },
+          });
+
+          cancelledOrder = {
+            ...ord,
+            status: 'cancelled',
+            scanHistory: [...ord.scanHistory, scan],
+          };
+          return cancelledOrder;
+        }
+        return ord;
+      })
+    );
+
+    if (cancelledOrder) {
+      saveOrderToSupabase(cancelledOrder);
+    }
+  };
+
   const acceptOrder = (orderId: string, customCourier?: CourierProfile) => {
     let effectiveCourier = customCourier || courierSession || courierProfile;
     if (!effectiveCourier || effectiveCourier.id === 'courier_unregistered') {
@@ -1205,6 +1239,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActiveOrderForTracking,
         updatePricingConfig,
         createOrder,
+        cancelOrder,
         acceptOrder,
         recordDropoffIn,
         recordDropoffOut,
