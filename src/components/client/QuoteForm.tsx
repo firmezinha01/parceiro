@@ -2,9 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { VehicleModal, PickupMethod, Address, Order } from '../../types';
 import { calculatePricing, formatCurrency } from '../../services/pricingEngine';
-import { MapPreview } from '../common/MapPreview';
 import { PaymentModal } from './PaymentModal';
-import { RegisterClientModal } from '../auth/RegisterClientModal';
 import { fetchAddressByCep } from '../../services/cepService';
 import { calculateRouteDistanceAndTime } from '../../services/routingService';
 import {
@@ -19,9 +17,6 @@ import {
   CheckCircle,
   ArrowRight,
   Info,
-  ShieldCheck,
-  UserCheck,
-  UserPlus,
   RefreshCw,
   CheckCircle2,
   Navigation,
@@ -39,13 +34,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOrderCreated }) => {
     createOrder,
     cancelOrder,
     currentClient,
-    setCurrentClient,
-    clients,
-    setCurrentRole,
   } = useApp();
 
-  // Controle do Modal de Cadastro Seguro de Cliente
-  const [isRegisterClientOpen, setIsRegisterClientOpen] = useState(false);
   const [createdOrderForDispatch, setCreatedOrderForDispatch] = useState<Order | null>(null);
 
   // Modal e Dimensões
@@ -298,72 +288,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOrderCreated }) => {
 
   return (
     <div className="space-y-6">
-      {/* Banner de Identificação Segura do Cliente Remetente (KYC) */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {isUnregistered || clients.length === 0 ? (
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 shrink-0">
-              <UserPlus className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-amber-900 uppercase">Remetente:</span>
-                <strong className="text-sm font-black text-slate-900">Nenhum Remetente Selecionado</strong>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Cadastre seus dados ou informe o endereço de origem abaixo para emissão da etiqueta.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 shrink-0">
-              <UserCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-500 uppercase">Remetente Atual:</span>
-                <strong className="text-sm font-black text-slate-900">{currentClient.name}</strong>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3" /> Verificado (CPF + Documento)
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 font-mono mt-0.5">
-                CPF: {currentClient.document} • Tel: {currentClient.phone}
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2">
-          {clients.length > 1 && (
-            <select
-              value={currentClient.id}
-              onChange={(e) => {
-                const found = clients.find((c) => c.id === e.target.value);
-                if (found) setCurrentClient(found);
-              }}
-              className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 outline-hidden"
-            >
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setIsRegisterClientOpen(true)}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>{clients.length === 0 ? 'Cadastrar Meu Remetente' : 'Cadastrar Novo'}</span>
-          </button>
-        </div>
-      </div>
-
       <form onSubmit={handleProceedToPayment} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Coluna Esquerda: Formulário de Cotação */}
         <div className="lg:col-span-7 space-y-6">
@@ -402,10 +326,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOrderCreated }) => {
                 <div>
                   <div className="text-sm font-black text-slate-900">Moto Express</div>
                   <div className="text-xs text-slate-600 mt-0.5">Até 2 kg • Corredor rápido</div>
-                  <div className="text-xs font-bold text-amber-700 mt-1">
-                    Base R$ {pricingConfig.motoBaseRate.toFixed(2)} + R${' '}
-                    {pricingConfig.motoPerKmRate.toFixed(2)}/km
-                  </div>
                 </div>
               </button>
 
@@ -429,10 +349,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOrderCreated }) => {
                 <div>
                   <div className="text-sm font-black text-slate-900">Carro / Utilitário</div>
                   <div className="text-xs text-slate-600 mt-0.5">Até 20 kg • Caixas e volumes</div>
-                  <div className="text-xs font-bold text-amber-700 mt-1">
-                    Base R$ {pricingConfig.carBaseRate.toFixed(2)} + R${' '}
-                    {pricingConfig.carPerKmRate.toFixed(2)}/km
-                  </div>
                 </div>
               </button>
             </div>
@@ -857,24 +773,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOrderCreated }) => {
           </div>
         </div>
 
-        {/* Coluna Direita: Mapa e Resumo com Repasse Transparente */}
+        {/* Coluna Direita: Resumo com Repasse Transparente */}
         <div className="lg:col-span-5 space-y-6">
-          {/* Prévia da Rota em Mapa */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-              <span>Prévia da Rota e Deslocamento:</span>
-              <span className="text-blue-600 font-mono font-bold">{distanceKm} km</span>
-            </div>
-            <MapPreview
-              origin={originAddress}
-              destination={destAddress}
-              dropoffAddress={pickupMethod === 'dropoff_point' ? selectedDropoff?.address : undefined}
-              modal={modal}
-              distanceKm={distanceKm}
-              durationMin={durationMin}
-            />
-          </div>
-
           {/* Resumo da Cotação */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
             <div className="bg-slate-900 text-white p-5">
