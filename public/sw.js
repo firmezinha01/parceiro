@@ -1,5 +1,5 @@
 // Service Worker - Parceiro PWA
-const CACHE_NAME = 'parceiro-v3';
+const CACHE_NAME = 'parceiro-v4';
 
 const ASSETS_TO_PRECACHE = [
   '/',

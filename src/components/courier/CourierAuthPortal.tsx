@@ -33,7 +33,6 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
   const {
     loginCourier,
     registerCourier,
-    isCloudConnected,
   } = useApp();
 
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -154,37 +153,10 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
             <p className="text-[11px] text-slate-400">Portal Independente de Operações e Corridas</p>
           </div>
         </div>
-
-        <div className="flex items-center gap-1.5">
-          {isCloudConnected ? (
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold" title="Banco Supabase Conectado em Tempo Real">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Nuvem Ativa</span>
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-bold" title="Operando localmente. Configure VITE_SUPABASE_URL na Vercel para sincronizar entre aparelhos.">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-              <span>Modo Local</span>
-            </span>
-          )}
-        </div>
       </header>
 
       {/* Conteúdo Central */}
       <main className="flex-1 max-w-md w-full mx-auto px-4 py-6 flex flex-col justify-center">
-        {/* Dica de Instalação no Celular / Baixar App */}
-        <div className="mb-4 p-3.5 bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 rounded-2xl flex items-center gap-3 shadow-lg">
-          <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-lg shrink-0 shadow-md">
-            📲
-          </div>
-          <div className="text-xs">
-            <strong className="text-white block font-bold">Baixar o App no seu Celular:</strong>
-            <span className="text-slate-300 text-[11px] leading-relaxed block">
-              No navegador, toque em Compartilhar (ou no menu ⋮) e selecione <strong>"Adicionar à Tela de Início"</strong> para instalar o App.
-            </span>
-          </div>
-        </div>
-
         {/* Card Principal */}
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -545,7 +517,7 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
       )}
 
       {/* Footer */}
-      <footer className="p-4 text-center text-[11px] text-slate-500 border-t border-slate-900">
+      <footer className="p-4 text-center text-[11px] text-slate-500 border-t border-slate-900 bg-slate-950">
         Parceiro • Aplicativo Exclusivo para Entregadores Credenciados
       </footer>
     </div>
