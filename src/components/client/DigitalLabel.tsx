@@ -50,9 +50,10 @@ export const DigitalLabel: React.FC<DigitalLabelProps> = ({ order, onClose }) =>
         <div className="flex items-center justify-between border-b-2 border-black pb-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xl font-black tracking-tighter">CORREIOS</span>
-              <span className="text-xs font-black uppercase bg-black text-white px-1.5 py-0.5 rounded-xs">
-                PARCEIROS
+              <img src="/pwa-192x192.png" alt="Parceiro" className="w-8 h-8 object-contain" />
+              <span className="text-2xl font-black tracking-tight text-slate-950">PARCEIRO</span>
+              <span className="text-[10px] font-black uppercase bg-amber-400 text-slate-950 px-2 py-0.5 rounded-sm">
+                LOGÍSTICA
               </span>
             </div>
             <div className="text-[10px] font-bold text-slate-700 tracking-wider mt-0.5">

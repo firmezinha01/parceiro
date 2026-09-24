@@ -141,8 +141,8 @@ export const CourierAuthPortal: React.FC<CourierAuthPortalProps> = () => {
       {/* Barra Superior Discreta */}
       <header className="p-4 border-b border-slate-900 flex items-center justify-between max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-400 flex items-center justify-center text-slate-950 font-black shadow-md shadow-amber-500/20">
-            <Bike className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center p-0.5 shadow-md shadow-amber-500/20 overflow-hidden shrink-0 border border-slate-700">
+            <img src="/pwa-192x192.png" alt="Parceiro" className="w-full h-full object-contain" />
           </div>
           <div>
             <h1 className="text-sm font-black tracking-tight flex items-center gap-1.5 text-white">

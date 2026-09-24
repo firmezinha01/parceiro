@@ -25,8 +25,8 @@ export const Navbar: React.FC<NavbarProps> = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo & Marca */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20">
-              <Package className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center p-0.5 shadow-md shadow-amber-500/20 overflow-hidden shrink-0 border border-slate-700">
+              <img src="/pwa-192x192.png" alt="Parceiro" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-2">

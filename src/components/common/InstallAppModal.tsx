@@ -110,13 +110,13 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
       <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 text-slate-900 shadow-2xl border border-slate-200 animate-in zoom-in-95 my-auto max-h-[92vh] flex flex-col">
         {/* Cabeçalho */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-slate-950 font-black shadow-xs">
-              <Download className="w-5 h-5" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center p-0.5 shadow-sm overflow-hidden shrink-0">
+              <img src="/pwa-192x192.png" alt="Parceiro" className="w-full h-full object-contain" />
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-black text-slate-900 leading-tight">
-                Instalar no Celular
+                Instalar App Parceiro no Celular
               </h2>
               <p className="text-[11px] text-slate-500">
                 Acesse como aplicativo nativo (PWA) em tela cheia

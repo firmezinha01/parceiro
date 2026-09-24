@@ -304,7 +304,7 @@ export const RegisterMerchantModal: React.FC<RegisterMerchantModalProps> = ({ on
               </div>
               {isLoadingCep && (
                 <span className="text-[10px] text-blue-600 font-semibold animate-pulse">
-                  Buscando CEP nos Correios...
+                  Buscando CEP em tempo real...
                 </span>
               )}
             </div>

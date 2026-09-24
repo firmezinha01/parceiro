@@ -103,8 +103,8 @@ export const AuthScreen: React.FC = () => {
       <div className="max-w-md w-full my-auto z-10 space-y-6">
         {/* Logo & Identidade Visual */}
         <div className="text-center space-y-2">
-          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-400 text-slate-950 shadow-xl shadow-amber-500/20 mb-1 animate-in zoom-in">
-            <Package className="w-8 h-8" />
+          <div className="inline-flex p-2 rounded-3xl bg-white shadow-xl shadow-amber-500/20 mb-1 animate-in zoom-in border-2 border-amber-400">
+            <img src="/pwa-192x192.png" alt="Parceiro" className="w-16 h-16 object-contain" />
           </div>
 
           <div className="flex items-center justify-center gap-2">
