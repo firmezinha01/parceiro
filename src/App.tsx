@@ -1,162 +1,259 @@
 import React, { useState, useEffect } from 'react';
-import { AppProvider, useApp } from './context/AppContext';
-import { AuthScreen } from './components/auth/AuthScreen';
-import { Navbar } from './components/layout/Navbar';
-import { QuoteForm } from './components/client/QuoteForm';
-import { TrackingView } from './components/client/TrackingView';
-import { CourierStandaloneApp } from './components/courier/CourierStandaloneApp';
-import { Order } from './types';
-import {
-  Send,
-  Search,
-  ShieldCheck,
-  Bike,
-  Store,
-} from 'lucide-react';
+import { initialDriver, sampleOrders, initialTransactions, generateRandomOrder } from './mockData';
+import { DriverProfile, Order, WalletTransaction, VehicleType, OrderStatus } from './types';
+import { Header } from './components/Header';
+import { BottomNav, NavTab } from './components/BottomNav';
+import { OrdersTab } from './components/OrdersTab';
+import { ActiveOrderView } from './components/ActiveOrderView';
+import { WalletTab } from './components/WalletTab';
+import { MapTab } from './components/MapTab';
+import { ProfileTab } from './components/ProfileTab';
+import { OrderIncomingModal } from './components/OrderIncomingModal';
+import { SimulatorToolbar } from './components/SimulatorToolbar';
+import { sound } from './sound';
 
-type ActivePortal = 'main' | 'courier';
+export function App() {
+  const [driver, setDriver] = useState<DriverProfile>(initialDriver);
+  const [orders, setOrders] = useState<Order[]>(sampleOrders);
+  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+  const [incomingOrder, setIncomingOrder] = useState<Order | null>(null);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>(initialTransactions);
+  const [activeTab, setActiveTab] = useState<NavTab>('orders');
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [isAutoSimulating, setIsAutoSimulating] = useState<boolean>(false);
+  const [isMobileFrame, setIsMobileFrame] = useState<boolean>(false);
+  const localIp = '192.168.15.4';
 
-function detectPortal(): ActivePortal {
-  if (typeof window === 'undefined') return 'main';
-  const pathname = window.location.pathname.toLowerCase();
-  const search = new URLSearchParams(window.location.search);
-  const hash = window.location.hash.toLowerCase();
-
-  if (
-    pathname.startsWith('/entregador') ||
-    pathname.startsWith('/courier') ||
-    search.get('portal') === 'courier' ||
-    search.get('portal') === 'entregador' ||
-    search.get('app') === 'courier' ||
-    search.get('app') === 'entregador' ||
-    hash.includes('entregador') ||
-    hash.includes('courier')
-  ) {
-    return 'courier';
-  }
-  return 'main';
-}
-
-const MainContent: React.FC = () => {
-  const { authUser, currentRole, setCurrentRole, orders, setActiveOrderForTracking } = useApp();
-  const [clientTab, setClientTab] = useState<'quote' | 'tracking'>('quote');
-
-  // Garante que o papel esteja sempre como 'client' no portal principal
+  // Check if screen is desktop to optionally toggle mobile frame
   useEffect(() => {
-    if (currentRole !== 'client') {
-      setCurrentRole('client');
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setIsMobileFrame(true);
     }
-  }, [currentRole, setCurrentRole]);
+  }, []);
 
-  // Se o usuário não estiver logado no portal principal, exibe a tela de login / cadastro
-  if (!authUser) {
-    return <AuthScreen />;
-  }
+  // Periodic automatic order generator when simulator is on
+  useEffect(() => {
+    if (!isAutoSimulating || !driver.isOnline || activeOrder) return;
 
-  const handleOrderCreated = (order: Order) => {
-    setActiveOrderForTracking(order);
-    setClientTab('tracking');
+    const timer = setInterval(() => {
+      const newOrd = generateRandomOrder(driver.vehicleType);
+      setOrders(prev => [newOrd, ...prev.slice(0, 8)]);
+      setIncomingOrder(newOrd);
+    }, 22000);
+
+    return () => clearInterval(timer);
+  }, [isAutoSimulating, driver.isOnline, activeOrder, driver.vehicleType]);
+
+  const handleToggleOnline = () => {
+    setDriver(prev => {
+      const nextOnline = !prev.isOnline;
+      if (!nextOnline) {
+        setIncomingOrder(null);
+      }
+      return { ...prev, isOnline: nextOnline };
+    });
+  };
+
+  const handleChangeVehicle = (type: VehicleType) => {
+    const models: Record<VehicleType, string> = {
+      moto: 'Honda CG 160 Cargo',
+      carro: 'Chevrolet Onix Plus',
+      fiorino: 'Fiat Fiorino 1.4 EVO',
+      van: 'Renault Master Furgão',
+      carreto: 'Toyota Hilux Cabine Simples',
+      caminhao: 'Mercedes-Benz Accelo 815',
+    };
+    setDriver(prev => ({
+      ...prev,
+      vehicleType: type,
+      vehicleModel: models[type],
+    }));
+  };
+
+  const handleTriggerManualOrder = (vehicle?: VehicleType) => {
+    sound.playClick();
+    if (!driver.isOnline) {
+      setDriver(prev => ({ ...prev, isOnline: true }));
+    }
+    const newOrd = generateRandomOrder(vehicle || driver.vehicleType);
+    setOrders(prev => [newOrd, ...prev.filter(o => o.id !== newOrd.id)]);
+    setIncomingOrder(newOrd);
+  };
+
+  const handleAcceptOrder = (order: Order) => {
+    setIncomingOrder(null);
+    setActiveOrder(order);
+    setOrders(prev => prev.filter(o => o.id !== order.id));
+    setActiveTab('orders');
+  };
+
+  const handleDeclineOrder = (orderId: string) => {
+    setIncomingOrder(null);
+    setOrders(prev => prev.filter(o => o.id !== orderId));
+  };
+
+  const handleCompleteOrder = (order: Order, receiptName: string) => {
+    setActiveOrder(null);
+    
+    // Credit driver wallet & update stats
+    setDriver(prev => ({
+      ...prev,
+      walletBalance: prev.walletBalance + order.price,
+      todayEarnings: prev.todayEarnings + order.price,
+      weekEarnings: prev.weekEarnings + order.price,
+      totalTrips: prev.totalTrips + 1,
+    }));
+
+    // Add transaction to history
+    const newTx: WalletTransaction = {
+      id: `tx-${Date.now()}`,
+      type: 'trip_earning',
+      title: 'Corrida Finalizada com Sucesso',
+      subtitle: `Pedido ${order.code} • Entregue para ${receiptName}`,
+      amount: order.price,
+      date: 'Hoje',
+      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      orderCode: order.code,
+    };
+    setTransactions(prev => [newTx, ...prev]);
+    setActiveTab('wallet');
+  };
+
+  const handleCancelActiveOrder = (orderId: string) => {
+    sound.playClick();
+    setActiveOrder(null);
+  };
+
+  const handleWithdrawPix = (amount: number) => {
+    setDriver(prev => ({
+      ...prev,
+      walletBalance: Math.max(0, prev.walletBalance - amount),
+    }));
+
+    const newTx: WalletTransaction = {
+      id: `tx-pix-${Date.now()}`,
+      type: 'withdrawal',
+      title: 'Transferência Pix Realizada',
+      subtitle: `Para conta vinculada (${driver.pixKey})`,
+      amount: -amount,
+      date: 'Hoje',
+      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    };
+    setTransactions(prev => [newTx, ...prev]);
+  };
+
+  const handleRefreshOrders = () => {
+    const extraOrd = generateRandomOrder(driver.vehicleType);
+    setOrders(prev => [extraOrd, ...prev.slice(0, 5)]);
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
-      {/* Barra de Navegação Superior do Portal do Cliente */}
-      <Navbar />
+    <div className={`min-h-screen bg-slate-900 flex items-center justify-center ${isMobileFrame ? 'p-0 sm:p-6' : 'p-0'}`}>
+      
+      {/* Simulator Quick Action Toolbar */}
+      <SimulatorToolbar
+        onTriggerOrder={handleTriggerManualOrder}
+        isAutoSimulating={isAutoSimulating}
+        onToggleAutoSimulate={() => setIsAutoSimulating(!isAutoSimulating)}
+        isMobileFrame={isMobileFrame}
+        onToggleMobileFrame={() => setIsMobileFrame(!isMobileFrame)}
+        localIp={localIp}
+      />
 
-      {/* Área Principal de Conteúdo do Cliente */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="space-y-6">
-          {/* Tabs do Cliente */}
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setClientTab('quote')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                  clientTab === 'quote'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                }`}
-              >
-                <Send className="w-3.5 h-3.5 text-slate-950" />
-                <span>Nova Cotação de Envio</span>
-              </button>
-
-              <button
-                onClick={() => setClientTab('tracking')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                  clientTab === 'tracking'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                }`}
-              >
-                <Search className="w-3.5 h-3.5 text-slate-950" />
-                <span>Rastrear Encomenda & Etiqueta</span>
-                {orders.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-slate-900 text-amber-400">
-                    {orders.length}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
-              Rede de Entregas Locais • Moto & Carro
-            </span>
+      {/* Main Container / Mobile Frame */}
+      <div 
+        className={`w-full bg-white flex flex-col relative overflow-hidden transition-all duration-300 ${
+          isMobileFrame 
+            ? 'max-w-[440px] h-[100dvh] sm:h-[880px] sm:rounded-[44px] shadow-2xl border-0 sm:border-[10px] sm:border-zinc-800' 
+            : 'max-w-2xl h-[100dvh] shadow-none'
+        }`}
+      >
+        {/* Smartphone top camera pill indicator (only in mobile frame mode on desktop) */}
+        {isMobileFrame && (
+          <div className="hidden sm:flex absolute top-2 left-1/2 -translate-x-1/2 w-28 h-4 bg-zinc-900 rounded-full z-40 items-center justify-center">
+            <span className="w-2.5 h-2.5 rounded-full bg-zinc-800" />
           </div>
+        )}
 
-          {/* Conteúdo da Tab */}
-          {clientTab === 'quote' ? (
-            <QuoteForm onOrderCreated={handleOrderCreated} />
+        {/* Global App Header */}
+        <Header
+          driver={driver}
+          onToggleOnline={handleToggleOnline}
+          onChangeVehicle={handleChangeVehicle}
+          soundEnabled={soundEnabled}
+          onToggleSound={() => {
+            const next = !soundEnabled;
+            setSoundEnabled(next);
+            sound.setSoundEnabled(next);
+          }}
+        />
+
+        {/* Main Content Area */}
+        <main className="flex-1 relative overflow-hidden">
+          {/* Active Order view takes precedence if active */}
+          {activeOrder ? (
+            <ActiveOrderView
+              order={activeOrder}
+              onUpdateStatus={() => {}}
+              onComplete={handleCompleteOrder}
+              onCancel={handleCancelActiveOrder}
+            />
           ) : (
-            <TrackingView />
+            <>
+              {activeTab === 'orders' && (
+                <OrdersTab
+                  orders={orders}
+                  driver={driver}
+                  onAcceptOrder={handleAcceptOrder}
+                  onViewOrderDetails={(o) => setIncomingOrder(o)}
+                  onToggleOnline={handleToggleOnline}
+                  onRefreshOrders={handleRefreshOrders}
+                />
+              )}
+
+              {activeTab === 'map' && (
+                <MapTab driver={driver} />
+              )}
+
+              {activeTab === 'wallet' && (
+                <WalletTab
+                  driver={driver}
+                  transactions={transactions}
+                  onWithdrawPix={handleWithdrawPix}
+                />
+              )}
+
+              {activeTab === 'profile' && (
+                <ProfileTab
+                  driver={driver}
+                  onChangeVehicle={handleChangeVehicle}
+                  onUpdateDriver={(updated) => setDriver(prev => ({ ...prev, ...updated }))}
+                />
+              )}
+            </>
           )}
-        </div>
-      </main>
+        </main>
 
-      {/* Rodapé Informativo */}
-      <footer className="bg-slate-900 border-t border-slate-800 py-6 text-xs text-slate-400 no-print">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-extrabold text-white">Parceiro</span>
-            <span className="text-slate-600">—</span>
-            <span className="text-slate-400">Plataforma de Retirada e Entrega Descentralizada</span>
-          </div>
+        {/* Bottom Navigation */}
+        <BottomNav
+          activeTab={activeTab}
+          onSelectTab={(tab) => {
+            setActiveTab(tab);
+          }}
+          availableOrdersCount={driver.isOnline ? orders.length : 0}
+          hasActiveOrder={Boolean(activeOrder)}
+          onOpenActiveOrder={() => setActiveTab('orders')}
+        />
 
-          <div className="flex flex-wrap items-center gap-4 text-[11px]">
-            <span className="flex items-center gap-1 text-slate-300">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Baixas Auditáveis com GPS
-            </span>
-            <span className="flex items-center gap-1 text-slate-300">
-              <Bike className="w-3.5 h-3.5 text-amber-400" /> Repasse por Componente
-            </span>
-            <span className="flex items-center gap-1 text-slate-300">
-              <Store className="w-3.5 h-3.5 text-purple-400" /> Entregadores Credenciados
-            </span>
-          </div>
-        </div>
-      </footer>
+        {/* Incoming Order Flash Modal */}
+        <OrderIncomingModal
+          order={incomingOrder}
+          onAccept={handleAcceptOrder}
+          onDecline={handleDeclineOrder}
+        />
+      </div>
     </div>
   );
-};
-
-export default function App() {
-  const [activePortal, setActivePortal] = useState<ActivePortal>(detectPortal);
-
-  useEffect(() => {
-    const handlePopState = () => {
-      setActivePortal(detectPortal());
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  return (
-    <AppProvider>
-      {activePortal === 'courier' ? (
-        <CourierStandaloneApp />
-      ) : (
-        <MainContent />
-      )}
-    </AppProvider>
-  );
 }
+
+export default App;
