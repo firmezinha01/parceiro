@@ -32,6 +32,7 @@ export interface Order {
   paymentMethod: 'app' | 'dinheiro' | 'pix_direto';
   cargoType: string;
   cargoWeightKg?: number;
+  status?: OrderStatus;
   pickup: LocationPoint;
   delivery: LocationPoint;
   senderName: string;

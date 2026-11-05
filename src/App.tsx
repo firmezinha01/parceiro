@@ -11,6 +11,14 @@ import { ProfileTab } from './components/ProfileTab';
 import { OrderIncomingModal } from './components/OrderIncomingModal';
 import { SimulatorToolbar } from './components/SimulatorToolbar';
 import { sound } from './sound';
+import { 
+  supabase, 
+  isSupabaseConfigured, 
+  getAvailableOrdersFromSupabase, 
+  mapDbOrderToOrder, 
+  updateOrderStatusInDb, 
+  saveTransactionInDb 
+} from './services/supabase';
 
 export function App() {
   const [driver, setDriver] = useState<DriverProfile>(initialDriver);
@@ -29,6 +37,48 @@ export function App() {
     if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
       setIsMobileFrame(true);
     }
+  }, []);
+
+  // Supabase Data & Realtime Sync
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    // Load available orders from database
+    getAvailableOrdersFromSupabase().then(dbOrders => {
+      if (dbOrders && dbOrders.length > 0) {
+        setOrders(dbOrders);
+      }
+    });
+
+    // Realtime subscription for instant new orders
+    const channel = supabase
+      .channel('realtime:orders')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'orders' },
+        (payload) => {
+          const newOrder = mapDbOrderToOrder(payload.new);
+          if (newOrder.status === 'available') {
+            setOrders(prev => [newOrder, ...prev.filter(o => o.id !== newOrder.id)]);
+            setIncomingOrder(newOrder);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders' },
+        (payload) => {
+          const updated = mapDbOrderToOrder(payload.new);
+          if (updated.status !== 'available') {
+            setOrders(prev => prev.filter(o => o.id !== updated.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Periodic automatic order generator when simulator is on
@@ -85,6 +135,9 @@ export function App() {
     setActiveOrder(order);
     setOrders(prev => prev.filter(o => o.id !== order.id));
     setActiveTab('orders');
+
+    // Sync to Supabase
+    updateOrderStatusInDb(order.id, 'to_pickup');
   };
 
   const handleDeclineOrder = (orderId: string) => {
@@ -117,11 +170,16 @@ export function App() {
     };
     setTransactions(prev => [newTx, ...prev]);
     setActiveTab('wallet');
+
+    // Sync to Supabase
+    updateOrderStatusInDb(order.id, 'completed');
+    saveTransactionInDb(newTx);
   };
 
   const handleCancelActiveOrder = (orderId: string) => {
     sound.playClick();
     setActiveOrder(null);
+    updateOrderStatusInDb(orderId, 'available');
   };
 
   const handleWithdrawPix = (amount: number) => {
@@ -140,11 +198,23 @@ export function App() {
       time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     };
     setTransactions(prev => [newTx, ...prev]);
+    saveTransactionInDb(newTx);
   };
 
   const handleRefreshOrders = () => {
-    const extraOrd = generateRandomOrder(driver.vehicleType);
-    setOrders(prev => [extraOrd, ...prev.slice(0, 5)]);
+    if (isSupabaseConfigured) {
+      getAvailableOrdersFromSupabase().then(dbOrders => {
+        if (dbOrders && dbOrders.length > 0) {
+          setOrders(dbOrders);
+          return;
+        }
+        const extraOrd = generateRandomOrder(driver.vehicleType);
+        setOrders(prev => [extraOrd, ...prev.slice(0, 5)]);
+      });
+    } else {
+      const extraOrd = generateRandomOrder(driver.vehicleType);
+      setOrders(prev => [extraOrd, ...prev.slice(0, 5)]);
+    }
   };
 
   return (
@@ -194,7 +264,7 @@ export function App() {
           {activeOrder ? (
             <ActiveOrderView
               order={activeOrder}
-              onUpdateStatus={() => {}}
+              onUpdateStatus={(status) => updateOrderStatusInDb(activeOrder.id, status)}
               onComplete={handleCompleteOrder}
               onCancel={handleCancelActiveOrder}
             />
