@@ -11,6 +11,7 @@ import { ProfileTab } from './components/ProfileTab';
 import { OrderIncomingModal } from './components/OrderIncomingModal';
 import { SimulatorToolbar } from './components/SimulatorToolbar';
 import { RegistrationFlow } from './components/RegistrationFlow';
+import { LoginScreen } from './components/LoginScreen';
 import { sound } from './sound';
 import { 
   supabase, 
@@ -22,16 +23,18 @@ import {
   updateDriverInSupabase,
   createRealOrderInSupabase,
   updateOrderStatusInDb, 
-  saveTransactionInDb 
+  saveTransactionInDb,
+  mapDbDriverToProfile
 } from './services/supabase';
 
+type AuthView = 'login' | 'register' | 'panel';
+
 export function App() {
-  // Check if driver has completed registration and verification
+  const [authView, setAuthView] = useState<AuthView>(() => {
+    return localStorage.getItem('parceiro_driver_id') ? 'panel' : 'login';
+  });
   const [driverId, setDriverId] = useState<string | null>(() => {
     return localStorage.getItem('parceiro_driver_id');
-  });
-  const [isRegistered, setIsRegistered] = useState<boolean>(() => {
-    return Boolean(localStorage.getItem('parceiro_driver_id'));
   });
 
   const [driver, setDriver] = useState<DriverProfile>(initialDriver);
@@ -60,11 +63,10 @@ export function App() {
       getDriverFromSupabase(savedDriverId).then(dbDriver => {
         if (dbDriver) {
           setDriver(dbDriver);
-          setIsRegistered(true);
+          setAuthView('panel');
         } else {
-          // If not in db, reset to show registration
           localStorage.removeItem('parceiro_driver_id');
-          setIsRegistered(false);
+          setAuthView('login');
         }
         setIsLoadingDriver(false);
       });
@@ -75,7 +77,7 @@ export function App() {
 
   // Supabase Real-Time Orders Sync
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured || authView !== 'panel') return;
 
     // Load available orders from database
     getAvailableOrdersFromSupabase().then(dbOrders => {
@@ -113,11 +115,11 @@ export function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [authView]);
 
   // Periodic automatic order generator when simulator is on (creates real rows in Supabase)
   useEffect(() => {
-    if (!isAutoSimulating || !driver.isOnline || activeOrder) return;
+    if (!isAutoSimulating || !driver.isOnline || activeOrder || authView !== 'panel') return;
 
     const timer = setInterval(() => {
       const generated = generateRandomOrder(driver.vehicleType);
@@ -130,7 +132,53 @@ export function App() {
     }, 25000);
 
     return () => clearInterval(timer);
-  }, [isAutoSimulating, driver.isOnline, activeOrder, driver.vehicleType]);
+  }, [isAutoSimulating, driver.isOnline, activeOrder, driver.vehicleType, authView]);
+
+  // Handler for login from LoginScreen
+  const handleLogin = async (phoneInput: string) => {
+    sound.playClick();
+    if (isSupabaseConfigured) {
+      // Find driver by phone in Supabase
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const found = data[0];
+        setDriver(mapDbDriverToProfile(found));
+        setDriverId(found.id);
+        localStorage.setItem('parceiro_driver_id', found.id);
+        setAuthView('panel');
+        sound.playCashSuccess();
+        return;
+      }
+    }
+
+    // If no driver found in db, create default verified driver
+    const newDriverData = {
+      name: 'Carlos Alberto Silva',
+      phone: phoneInput || '(11) 98435-2781',
+      vehicle_type: 'fiorino',
+      vehicle_model: 'Fiat Fiorino 1.4 EVO',
+      vehicle_plate: 'BRA-2E19',
+      pix_key: phoneInput || 'carlos.silva@pix.com',
+      avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+    };
+    const created = await createDriverInSupabase(newDriverData);
+    if (created) {
+      setDriver(created.driver);
+      setDriverId(created.id);
+      localStorage.setItem('parceiro_driver_id', created.id);
+    } else {
+      const fallbackId = `drv-${Date.now()}`;
+      setDriverId(fallbackId);
+      localStorage.setItem('parceiro_driver_id', fallbackId);
+    }
+    setAuthView('panel');
+    sound.playCashSuccess();
+  };
 
   // Handler for completing the registration & document verification flow
   const handleCompleteRegistration = async (driverData: any) => {
@@ -141,20 +189,19 @@ export function App() {
       setDriverId(result.id);
       localStorage.setItem('parceiro_driver_id', result.id);
     } else {
-      // Local fallback
       setDriver(driverData);
       const fallbackId = `drv-${Date.now()}`;
       setDriverId(fallbackId);
       localStorage.setItem('parceiro_driver_id', fallbackId);
     }
-    setIsRegistered(true);
+    setAuthView('panel');
     sound.playCashSuccess();
   };
 
   const handleLogout = () => {
     localStorage.removeItem('parceiro_driver_id');
     setDriverId(null);
-    setIsRegistered(false);
+    setAuthView('login');
   };
 
   const handleToggleOnline = () => {
@@ -199,7 +246,6 @@ export function App() {
     // Create real row in Supabase orders table!
     const createdInDb = await createRealOrderInSupabase(newOrd);
     if (!createdInDb) {
-      // Local fallback if Supabase not reachable
       setOrders(prev => [newOrd, ...prev.filter(o => o.id !== newOrd.id)]);
       setIncomingOrder(newOrd);
     }
@@ -306,7 +352,7 @@ export function App() {
     }
   };
 
-  // If loading driver from database
+  // If loading driver state
   if (isLoadingDriver) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
@@ -320,13 +366,27 @@ export function App() {
     );
   }
 
-  // If driver has not completed registration and document verification, render Registration Flow
-  if (!isRegistered) {
+  // 1. TELA INICIAL (Login conforme a foto enviada)
+  if (authView === 'login') {
     return (
-      <RegistrationFlow onCompleteRegistration={handleCompleteRegistration} />
+      <LoginScreen
+        onLogin={handleLogin}
+        onGoToRegister={() => setAuthView('register')}
+      />
     );
   }
 
+  // 2. TELA DE CADASTRO & AVERIGUAÇÃO DE DOCUMENTOS
+  if (authView === 'register') {
+    return (
+      <RegistrationFlow 
+        onCompleteRegistration={handleCompleteRegistration}
+        onBackToLogin={() => setAuthView('login')}
+      />
+    );
+  }
+
+  // 3. PAINEL PRINCIPAL DE ENTREGAS
   return (
     <div className={`min-h-screen bg-slate-900 flex items-center justify-center ${isMobileFrame ? 'p-0 sm:p-6' : 'p-0'}`}>
       

@@ -8,10 +8,12 @@ import { sound } from '../sound';
 
 interface RegistrationFlowProps {
   onCompleteRegistration: (driverData: any) => void;
+  onBackToLogin?: () => void;
 }
 
 export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
   onCompleteRegistration,
+  onBackToLogin,
 }) => {
   const [step, setStep] = useState<number>(1); // 1: Personal, 2: Vehicle, 3: Documents, 4: Verification
 
@@ -245,6 +247,21 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
                 <span>Avançar para Veículo</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
+
+              {onBackToLogin && (
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sound.playClick();
+                      onBackToLogin();
+                    }}
+                    className="text-xs font-bold text-gray-500 hover:text-lala-orange transition-colors"
+                  >
+                    Já é cadastrado? <span className="text-lala-orange underline">Iniciar sessão</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
