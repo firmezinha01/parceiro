@@ -10,12 +10,14 @@ interface ProfileTabProps {
   driver: DriverProfile;
   onChangeVehicle: (type: VehicleType) => void;
   onUpdateDriver: (updated: Partial<DriverProfile>) => void;
+  onLogout?: () => void;
 }
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({
   driver,
   onChangeVehicle,
   onUpdateDriver,
+  onLogout,
 }) => {
   const [maxRadius, setMaxRadius] = useState(25);
   const [acceptFragile, setAcceptFragile] = useState(true);
@@ -175,8 +177,23 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
             <div className="p-2.5 rounded-xl bg-orange-50 border border-orange-100 text-orange-950 text-xs">
               <span className="font-bold block text-[11px]">Versão do App</span>
-              <span className="text-[10px] text-orange-700">Parceiro Motorista v1.0</span>
+              <span className="text-[10px] text-orange-700">Parceiro Motorista v1.0 (Conectado ao Supabase)</span>
             </div>
+
+            {onLogout && (
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  if (confirm('Deseja sair da conta para cadastrar ou testar outro motorista?')) {
+                    onLogout();
+                  }
+                }}
+                className="w-full py-3 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-colors mt-2"
+              >
+                Sair / Cadastrar Outro Motorista
+              </button>
+            )}
           </div>
         </div>
       </div>
