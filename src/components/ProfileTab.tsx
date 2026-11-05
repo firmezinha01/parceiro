@@ -102,23 +102,27 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-            <img
-              src={avatar || driver.avatar}
-              alt={driver.name}
-              className="w-18 h-18 rounded-full object-cover border-2 border-lala-orange shadow-lg"
-            />
-            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Camera className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-3.5">
+          <div 
+            className="relative shrink-0 cursor-pointer group w-14 h-14" 
+            onClick={() => fileInputRef.current?.click()}
+            title="Clique para alterar sua foto de perfil"
+          >
+            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-lala-orange shadow-md bg-zinc-800">
+              <img
+                src={avatar || driver.avatar}
+                alt={driver.name}
+                className="w-full h-full object-cover rounded-full"
+              />
             </div>
-            <button
-              type="button"
-              className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-lala-orange text-white flex items-center justify-center shadow border-2 border-zinc-900"
-              title="Trocar Foto"
+            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Camera className="w-4 h-4 text-white" />
+            </div>
+            <div
+              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-lala-orange text-white flex items-center justify-center shadow border-2 border-zinc-900 pointer-events-none"
             >
-              <Camera className="w-3 h-3" />
-            </button>
+              <Camera className="w-2.5 h-2.5" />
+            </div>
           </div>
 
           <div className="flex-1 min-w-0">
@@ -168,16 +172,26 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       {isEditing ? (
         <form onSubmit={handleSaveProfile} className="p-4 space-y-4">
           <div className="bg-white rounded-3xl p-5 border border-gray-200/80 shadow-sm space-y-3">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-extrabold text-sm text-gray-900">Editar Meus Dados</h3>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-xs font-bold text-lala-orange hover:underline flex items-center gap-1"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                <span>Trocar Foto de Perfil</span>
-              </button>
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2.5">
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-10 h-10 rounded-full overflow-hidden border border-lala-orange cursor-pointer shrink-0 shadow-sm"
+                  title="Alterar foto"
+                >
+                  <img src={avatar || driver.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-gray-900 leading-tight">Editar Meus Dados</h3>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-[11px] font-bold text-lala-orange hover:underline block"
+                  >
+                    Trocar foto de perfil
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div>
