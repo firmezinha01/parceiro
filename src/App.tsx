@@ -40,6 +40,7 @@ export function App() {
   const [driver, setDriver] = useState<DriverProfile>(initialDriver);
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+  const [isViewingActiveOrder, setIsViewingActiveOrder] = useState<boolean>(true);
   const [incomingOrder, setIncomingOrder] = useState<Order | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [activeTab, setActiveTab] = useState<NavTab>('orders');
@@ -138,8 +139,7 @@ export function App() {
   const handleLogin = async (phoneInput: string) => {
     sound.playClick();
     if (isSupabaseConfigured) {
-      // Find driver by phone in Supabase
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('drivers')
         .select('*')
         .order('created_at', { ascending: false })
@@ -156,7 +156,6 @@ export function App() {
       }
     }
 
-    // If no driver found in db, create default verified driver
     const newDriverData = {
       name: 'Carlos Alberto Silva',
       phone: phoneInput || '(11) 98435-2781',
@@ -182,7 +181,6 @@ export function App() {
 
   // Handler for completing the registration & document verification flow
   const handleCompleteRegistration = async (driverData: any) => {
-    // Save to Supabase
     const result = await createDriverInSupabase(driverData);
     if (result) {
       setDriver(result.driver);
@@ -201,6 +199,7 @@ export function App() {
   const handleLogout = () => {
     localStorage.removeItem('parceiro_driver_id');
     setDriverId(null);
+    setActiveOrder(null);
     setAuthView('login');
   };
 
@@ -235,6 +234,13 @@ export function App() {
     }
   };
 
+  const handleUpdateDriver = (updated: Partial<DriverProfile>) => {
+    setDriver(prev => ({ ...prev, ...updated }));
+    if (driverId) {
+      updateDriverInSupabase(driverId, updated);
+    }
+  };
+
   const handleTriggerManualOrder = async (vehicle?: VehicleType) => {
     sound.playClick();
     if (!driver.isOnline) {
@@ -243,7 +249,6 @@ export function App() {
     }
     const newOrd = generateRandomOrder(vehicle || driver.vehicleType);
 
-    // Create real row in Supabase orders table!
     const createdInDb = await createRealOrderInSupabase(newOrd);
     if (!createdInDb) {
       setOrders(prev => [newOrd, ...prev.filter(o => o.id !== newOrd.id)]);
@@ -254,10 +259,10 @@ export function App() {
   const handleAcceptOrder = (order: Order) => {
     setIncomingOrder(null);
     setActiveOrder(order);
+    setIsViewingActiveOrder(true);
     setOrders(prev => prev.filter(o => o.id !== order.id));
     setActiveTab('orders');
 
-    // Sync to Supabase
     updateOrderStatusInDb(order.id, 'to_pickup', driverId || undefined);
   };
 
@@ -268,13 +273,13 @@ export function App() {
 
   const handleCompleteOrder = (order: Order, receiptName: string) => {
     setActiveOrder(null);
+    setIsViewingActiveOrder(false);
     
     const newWalletBalance = driver.walletBalance + order.price;
     const newToday = driver.todayEarnings + order.price;
     const newWeek = driver.weekEarnings + order.price;
     const newTrips = driver.totalTrips + 1;
 
-    // Credit driver wallet & update stats
     setDriver(prev => ({
       ...prev,
       walletBalance: newWalletBalance,
@@ -283,7 +288,6 @@ export function App() {
       totalTrips: newTrips,
     }));
 
-    // Update real driver balance in Supabase!
     if (driverId) {
       updateDriverInSupabase(driverId, {
         walletBalance: newWalletBalance,
@@ -293,7 +297,6 @@ export function App() {
       });
     }
 
-    // Add transaction to history
     const newTx: WalletTransaction = {
       id: `tx-${Date.now()}`,
       type: 'trip_earning',
@@ -307,7 +310,6 @@ export function App() {
     setTransactions(prev => [newTx, ...prev]);
     setActiveTab('wallet');
 
-    // Sync to Supabase orders & wallet_transactions
     updateOrderStatusInDb(order.id, 'completed', driverId || undefined);
     saveTransactionInDb(newTx, driverId || undefined);
   };
@@ -315,6 +317,7 @@ export function App() {
   const handleCancelActiveOrder = (orderId: string) => {
     sound.playClick();
     setActiveOrder(null);
+    setIsViewingActiveOrder(false);
     updateOrderStatusInDb(orderId, 'available');
   };
 
@@ -376,7 +379,7 @@ export function App() {
     );
   }
 
-  // 2. TELA DE CADASTRO & AVERIGUAÇÃO DE DOCUMENTOS
+  // 2. TELA DE CADASTRO & AVERIGUAÇÃO DE DOCUMENTOS (Upload Real)
   if (authView === 'register') {
     return (
       <RegistrationFlow 
@@ -430,13 +433,14 @@ export function App() {
 
         {/* Main Content Area */}
         <main className="flex-1 relative overflow-hidden">
-          {/* Active Order view takes precedence if active */}
-          {activeOrder ? (
+          {/* Active Order view takes precedence ONLY when isViewingActiveOrder is true */}
+          {activeOrder && isViewingActiveOrder ? (
             <ActiveOrderView
               order={activeOrder}
               onUpdateStatus={(status) => updateOrderStatusInDb(activeOrder.id, status, driverId || undefined)}
               onComplete={handleCompleteOrder}
               onCancel={handleCancelActiveOrder}
+              onMinimize={() => setIsViewingActiveOrder(false)}
             />
           ) : (
             <>
@@ -467,7 +471,7 @@ export function App() {
                 <ProfileTab
                   driver={driver}
                   onChangeVehicle={handleChangeVehicle}
-                  onUpdateDriver={(updated) => setDriver(prev => ({ ...prev, ...updated }))}
+                  onUpdateDriver={handleUpdateDriver}
                   onLogout={handleLogout}
                 />
               )}
@@ -479,11 +483,15 @@ export function App() {
         <BottomNav
           activeTab={activeTab}
           onSelectTab={(tab) => {
+            setIsViewingActiveOrder(false);
             setActiveTab(tab);
           }}
           availableOrdersCount={driver.isOnline ? orders.length : 0}
-          hasActiveOrder={Boolean(activeOrder)}
-          onOpenActiveOrder={() => setActiveTab('orders')}
+          hasActiveOrder={Boolean(activeOrder && !isViewingActiveOrder)}
+          onOpenActiveOrder={() => {
+            setIsViewingActiveOrder(true);
+            setActiveTab('orders');
+          }}
         />
 
         {/* Incoming Order Flash Modal */}

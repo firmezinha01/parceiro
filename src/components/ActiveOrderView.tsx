@@ -12,6 +12,7 @@ interface ActiveOrderViewProps {
   onUpdateStatus: (status: OrderStatus) => void;
   onComplete: (order: Order, receiptName: string) => void;
   onCancel: (orderId: string) => void;
+  onMinimize?: () => void;
 }
 
 export const ActiveOrderView: React.FC<ActiveOrderViewProps> = ({
@@ -19,6 +20,7 @@ export const ActiveOrderView: React.FC<ActiveOrderViewProps> = ({
   onUpdateStatus,
   onComplete,
   onCancel,
+  onMinimize,
 }) => {
   const [currentStep, setCurrentStep] = useState<OrderStatus>('to_pickup');
   const [receiverName, setReceiverName] = useState(order.recipientName);
@@ -117,6 +119,19 @@ export const ActiveOrderView: React.FC<ActiveOrderViewProps> = ({
       <div className="bg-lala-charcoal text-white px-4 py-3 shadow-md sticky top-0 z-20">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
+            {onMinimize && (
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  onMinimize();
+                }}
+                className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 text-[10px] font-bold flex items-center gap-1 mr-1"
+                title="Minimizar tela da corrida"
+              >
+                <span>← Minimizar</span>
+              </button>
+            )}
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
               {stepInfo.badge}

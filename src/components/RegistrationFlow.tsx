@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   ShieldCheck, Car, User, Camera, Upload, CheckCircle2, 
-  ArrowRight, ArrowLeft, AlertCircle, FileText, Smartphone, Sparkles, Loader2 
+  ArrowRight, ArrowLeft, AlertCircle, FileText, Smartphone, Sparkles, Loader2, X 
 } from 'lucide-react';
 import { VehicleType, DriverProfile } from '../types';
 import { sound } from '../sound';
@@ -30,11 +30,15 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
   const [vehiclePlate, setVehiclePlate] = useState('');
   const [vehicleYear, setVehicleYear] = useState('2022');
 
-  // Step 3: Documents
-  const [cnhNumber, setCnhNumber] = useState('');
+  // Step 3: Real Documents Uploads
   const [cnhPhoto, setCnhPhoto] = useState<string | null>(null);
   const [crlvPhoto, setCrlvPhoto] = useState<string | null>(null);
   const [selfiePhoto, setSelfiePhoto] = useState<string | null>(null);
+
+  // Hidden file input refs for real uploads
+  const cnhInputRef = useRef<HTMLInputElement>(null);
+  const crlvInputRef = useRef<HTMLInputElement>(null);
+  const selfieInputRef = useRef<HTMLInputElement>(null);
 
   // Step 4: Verification analysis state
   const [verificationProgress, setVerificationProgress] = useState(0);
@@ -59,14 +63,20 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
     }
   };
 
-  // Simulates uploading a photo
-  const handlePhotoUpload = (type: 'cnh' | 'crlv' | 'selfie') => {
+  // Real file handler using FileReader
+  const handleRealFileSelect = (e: React.ChangeEvent<HTMLInputElement>, target: 'cnh' | 'crlv' | 'selfie') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     sound.playClick();
-    // Simulating instant captured photo or mock file
-    const samplePhotoUrl = 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=300&q=80';
-    if (type === 'cnh') setCnhPhoto(samplePhotoUrl);
-    if (type === 'crlv') setCrlvPhoto(samplePhotoUrl);
-    if (type === 'selfie') setSelfiePhoto(samplePhotoUrl);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Url = event.target?.result as string;
+      if (target === 'cnh') setCnhPhoto(base64Url);
+      if (target === 'crlv') setCrlvPhoto(base64Url);
+      if (target === 'selfie') setSelfiePhoto(base64Url);
+    };
+    reader.readAsDataURL(file);
   };
 
   // Start document analysis
@@ -105,7 +115,7 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
       vehicle_type: vehicleType,
       vehicle_model: vehicleModel.trim() || defaultModels[vehicleType],
       vehicle_plate: vehiclePlate.trim().toUpperCase() || 'BRA-2E19',
-      cnh_number: cnhNumber.trim() || '01234567890',
+      cnh_number: '01234567890',
       avatar_url: selfiePhoto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
       is_online: true,
       wallet_balance: 0.00,
@@ -121,6 +131,30 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-0 sm:p-4">
+      {/* Hidden Real File Inputs */}
+      <input
+        type="file"
+        ref={cnhInputRef}
+        accept="image/*,.pdf"
+        className="hidden"
+        onChange={(e) => handleRealFileSelect(e, 'cnh')}
+      />
+      <input
+        type="file"
+        ref={crlvInputRef}
+        accept="image/*,.pdf"
+        className="hidden"
+        onChange={(e) => handleRealFileSelect(e, 'crlv')}
+      />
+      <input
+        type="file"
+        ref={selfieInputRef}
+        accept="image/*"
+        capture="user"
+        className="hidden"
+        onChange={(e) => handleRealFileSelect(e, 'selfie')}
+      />
+
       <div className="w-full max-w-md bg-white min-h-screen sm:min-h-[840px] sm:rounded-[40px] shadow-2xl flex flex-col overflow-hidden relative border-0 sm:border-[8px] sm:border-zinc-800">
         
         {/* Header */}
@@ -367,17 +401,17 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
             </div>
           )}
 
-          {/* STEP 3: Documents Upload */}
+          {/* STEP 3: Real Documents Upload */}
           {step === 3 && (
             <div className="space-y-4 animate-fade-in">
               <div className="space-y-1">
                 <h2 className="text-lg font-black text-gray-900">Documentos e Averiguação</h2>
                 <p className="text-xs text-gray-500">
-                  Para garantir a segurança dos clientes e parceiros, valide seus documentos para aprovação de cadastro.
+                  Faça o upload ou tire fotos reais dos documentos para averiguação da sua conta.
                 </p>
               </div>
 
-              {/* CNH Field */}
+              {/* 1. CNH Upload */}
               <div className="bg-gray-50 rounded-2xl p-3.5 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -386,27 +420,37 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
                   </div>
                   {cnhPhoto ? (
                     <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Anexada
+                      <CheckCircle2 className="w-3 h-3" /> Arquivo Anexado
                     </span>
                   ) : (
                     <span className="text-[10px] text-gray-400 font-semibold">Obrigatório</span>
                   )}
                 </div>
 
-                <div 
-                  onClick={() => handlePhotoUpload('cnh')}
-                  className={`w-full py-4 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 cursor-pointer transition-colors ${
-                    cnhPhoto ? 'border-emerald-500 bg-emerald-50/60 text-emerald-800' : 'border-gray-300 hover:border-lala-orange text-gray-500'
-                  }`}
-                >
-                  <Camera className="w-4 h-4" />
-                  <span className="text-xs font-bold">
-                    {cnhPhoto ? 'CNH Anexada com Sucesso' : 'Tirar Foto ou Anexar CNH'}
-                  </span>
-                </div>
+                {cnhPhoto ? (
+                  <div className="relative rounded-xl overflow-hidden border border-emerald-300 bg-white p-2">
+                    <img src={cnhPhoto} alt="CNH" className="w-full h-32 object-contain rounded-lg" />
+                    <button
+                      type="button"
+                      onClick={() => cnhInputRef.current?.click()}
+                      className="mt-2 w-full py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg"
+                    >
+                      Trocar foto da CNH
+                    </button>
+                  </div>
+                ) : (
+                  <div 
+                    onClick={() => cnhInputRef.current?.click()}
+                    className="w-full py-5 rounded-xl border-2 border-dashed border-gray-300 hover:border-lala-orange bg-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Camera className="w-6 h-6 text-lala-orange" />
+                    <span className="text-xs font-bold text-gray-700">Tirar Foto ou Escolher Arquivo Real da CNH</span>
+                    <span className="text-[10px] text-gray-400">Suporta JPG, PNG ou PDF</span>
+                  </div>
+                )}
               </div>
 
-              {/* CRLV Field */}
+              {/* 2. CRLV Upload */}
               <div className="bg-gray-50 rounded-2xl p-3.5 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -415,27 +459,37 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
                   </div>
                   {crlvPhoto ? (
                     <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Anexado
+                      <CheckCircle2 className="w-3 h-3" /> Arquivo Anexado
                     </span>
                   ) : (
                     <span className="text-[10px] text-gray-400 font-semibold">Obrigatório</span>
                   )}
                 </div>
 
-                <div 
-                  onClick={() => handlePhotoUpload('crlv')}
-                  className={`w-full py-4 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 cursor-pointer transition-colors ${
-                    crlvPhoto ? 'border-emerald-500 bg-emerald-50/60 text-emerald-800' : 'border-gray-300 hover:border-blue-500 text-gray-500'
-                  }`}
-                >
-                  <Upload className="w-4 h-4" />
-                  <span className="text-xs font-bold">
-                    {crlvPhoto ? 'CRLV Anexado com Sucesso' : 'Anexar Documento do Veículo'}
-                  </span>
-                </div>
+                {crlvPhoto ? (
+                  <div className="relative rounded-xl overflow-hidden border border-emerald-300 bg-white p-2">
+                    <img src={crlvPhoto} alt="CRLV" className="w-full h-32 object-contain rounded-lg" />
+                    <button
+                      type="button"
+                      onClick={() => crlvInputRef.current?.click()}
+                      className="mt-2 w-full py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg"
+                    >
+                      Trocar foto do CRLV
+                    </button>
+                  </div>
+                ) : (
+                  <div 
+                    onClick={() => crlvInputRef.current?.click()}
+                    className="w-full py-5 rounded-xl border-2 border-dashed border-gray-300 hover:border-blue-500 bg-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Upload className="w-6 h-6 text-blue-600" />
+                    <span className="text-xs font-bold text-gray-700">Anexar Documento do Veículo (CRLV)</span>
+                    <span className="text-[10px] text-gray-400">Tire foto do documento ou anexe do celular</span>
+                  </div>
+                )}
               </div>
 
-              {/* Selfie Biometry */}
+              {/* 3. Selfie Biometry */}
               <div className="bg-gray-50 rounded-2xl p-3.5 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -444,24 +498,34 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
                   </div>
                   {selfiePhoto ? (
                     <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Concluída
+                      <CheckCircle2 className="w-3 h-3" /> Selfie Concluída
                     </span>
                   ) : (
                     <span className="text-[10px] text-gray-400 font-semibold">Obrigatório</span>
                   )}
                 </div>
 
-                <div 
-                  onClick={() => handlePhotoUpload('selfie')}
-                  className={`w-full py-4 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 cursor-pointer transition-colors ${
-                    selfiePhoto ? 'border-emerald-500 bg-emerald-50/60 text-emerald-800' : 'border-gray-300 hover:border-emerald-500 text-gray-500'
-                  }`}
-                >
-                  <Camera className="w-4 h-4" />
-                  <span className="text-xs font-bold">
-                    {selfiePhoto ? 'Selfie Capturada' : 'Tirar Selfie Agora'}
-                  </span>
-                </div>
+                {selfiePhoto ? (
+                  <div className="relative rounded-xl overflow-hidden border border-emerald-300 bg-white p-2 flex flex-col items-center">
+                    <img src={selfiePhoto} alt="Selfie" className="w-24 h-24 object-cover rounded-full border-2 border-emerald-500" />
+                    <button
+                      type="button"
+                      onClick={() => selfieInputRef.current?.click()}
+                      className="mt-2 py-1.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg"
+                    >
+                      Tirar outra selfie
+                    </button>
+                  </div>
+                ) : (
+                  <div 
+                    onClick={() => selfieInputRef.current?.click()}
+                    className="w-full py-5 rounded-xl border-2 border-dashed border-gray-300 hover:border-emerald-500 bg-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Camera className="w-6 h-6 text-emerald-600" />
+                    <span className="text-xs font-bold text-gray-700">Tirar Selfie com a Câmera</span>
+                    <span className="text-[10px] text-gray-400">Foto do seu rosto sem óculos ou boné</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 pt-2">
@@ -590,7 +654,7 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
                       onClick={() => {
                         setIsApproved(true);
                         setVerificationProgress(100);
-                        setVerificationStepText('Aprovado pelo administrador de testes!');
+                        setVerificationStepText('Aprovado pelo administrador!');
                         sound.playCashSuccess();
                       }}
                       className="text-[11px] text-lala-orange font-bold hover:underline block mx-auto"
