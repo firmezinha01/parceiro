@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { initialDriver, generateRandomOrder } from './mockData';
-import { DriverProfile, Order, WalletTransaction, VehicleType, OrderStatus } from './types';
+import { DriverProfile, Order, WalletTransaction, VehicleType, OrderStatus, UserMode } from './types';
 import { Header } from './components/Header';
 import { BottomNav, NavTab } from './components/BottomNav';
 import { OrdersTab } from './components/OrdersTab';
@@ -12,6 +12,7 @@ import { OrderIncomingModal } from './components/OrderIncomingModal';
 import { SimulatorToolbar } from './components/SimulatorToolbar';
 import { RegistrationFlow } from './components/RegistrationFlow';
 import { LoginScreen } from './components/LoginScreen';
+import { ClientOrderFlow } from './components/ClientOrderFlow';
 import { sound } from './sound';
 import { 
   supabase, 
@@ -30,6 +31,11 @@ import {
 type AuthView = 'login' | 'register' | 'panel';
 
 export function App() {
+  const [userMode, setUserMode] = useState<UserMode>(() => {
+    const saved = localStorage.getItem('parceiro_user_mode');
+    return (saved === 'client' || saved === 'driver') ? (saved as UserMode) : 'driver';
+  });
+
   const [authView, setAuthView] = useState<AuthView>(() => {
     return localStorage.getItem('parceiro_driver_id') ? 'panel' : 'login';
   });
@@ -48,7 +54,7 @@ export function App() {
   const [isAutoSimulating, setIsAutoSimulating] = useState<boolean>(false);
   const [isMobileFrame, setIsMobileFrame] = useState<boolean>(false);
   const [isLoadingDriver, setIsLoadingDriver] = useState<boolean>(true);
-  const localIp = '192.168.15.4';
+  const localIp = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.hostname : '192.168.15.174';
 
   // Check if screen is desktop to optionally toggle mobile frame
   useEffect(() => {
@@ -201,6 +207,11 @@ export function App() {
     setDriverId(null);
     setActiveOrder(null);
     setAuthView('login');
+  };
+
+  const handleSetUserMode = (mode: UserMode) => {
+    setUserMode(mode);
+    localStorage.setItem('parceiro_user_mode', mode);
   };
 
   const handleToggleOnline = () => {
@@ -369,17 +380,66 @@ export function App() {
     );
   }
 
-  // 1. TELA INICIAL (Login conforme a foto enviada)
-  if (authView === 'login') {
+  // 0. MODO SOLICITANTE / CLIENTE (Chamar Fretes & Entregas)
+  if (userMode === 'client') {
     return (
-      <LoginScreen
-        onLogin={handleLogin}
-        onGoToRegister={() => setAuthView('register')}
-      />
+      <div className={`min-h-screen bg-slate-900 flex items-center justify-center ${isMobileFrame ? 'p-0 sm:p-6' : 'p-0'}`}>
+        <SimulatorToolbar
+          onTriggerOrder={handleTriggerManualOrder}
+          isAutoSimulating={isAutoSimulating}
+          onToggleAutoSimulate={() => setIsAutoSimulating(!isAutoSimulating)}
+          isMobileFrame={isMobileFrame}
+          onToggleMobileFrame={() => setIsMobileFrame(!isMobileFrame)}
+          localIp={localIp}
+          userMode={userMode}
+          onToggleUserMode={() => handleSetUserMode('driver')}
+        />
+
+        <div 
+          className={`w-full bg-white flex flex-col relative overflow-hidden transition-all duration-300 ${
+            isMobileFrame 
+              ? 'max-w-[440px] h-[100dvh] sm:h-[880px] sm:rounded-[44px] shadow-2xl border-0 sm:border-[10px] sm:border-zinc-800' 
+              : 'max-w-2xl h-[100dvh] shadow-none'
+          }`}
+        >
+          {isMobileFrame && (
+            <div className="hidden sm:flex absolute top-2 left-1/2 -translate-x-1/2 w-28 h-4 bg-zinc-900 rounded-full z-40 items-center justify-center">
+              <span className="w-2.5 h-2.5 rounded-full bg-zinc-800" />
+            </div>
+          )}
+
+          <ClientOrderFlow
+            onSwitchToDriver={() => handleSetUserMode('driver')}
+          />
+        </div>
+      </div>
     );
   }
 
-  // 2. TELA DE CADASTRO & AVERIGUAÇÃO DE DOCUMENTOS (Upload Real)
+  // 1. TELA INICIAL MOTORISTA (Login conforme a foto enviada)
+  if (authView === 'login') {
+    return (
+      <>
+        <SimulatorToolbar
+          onTriggerOrder={handleTriggerManualOrder}
+          isAutoSimulating={isAutoSimulating}
+          onToggleAutoSimulate={() => setIsAutoSimulating(!isAutoSimulating)}
+          isMobileFrame={isMobileFrame}
+          onToggleMobileFrame={() => setIsMobileFrame(!isMobileFrame)}
+          localIp={localIp}
+          userMode={userMode}
+          onToggleUserMode={() => handleSetUserMode('client')}
+        />
+        <LoginScreen
+          onLogin={handleLogin}
+          onGoToRegister={() => setAuthView('register')}
+          onSwitchToClient={() => handleSetUserMode('client')}
+        />
+      </>
+    );
+  }
+
+  // 2. TELA DE CADASTRO MOTORISTA & AVERIGUAÇÃO DE DOCUMENTOS (Upload Real)
   if (authView === 'register') {
     return (
       <RegistrationFlow 
@@ -389,7 +449,7 @@ export function App() {
     );
   }
 
-  // 3. PAINEL PRINCIPAL DE ENTREGAS
+  // 3. PAINEL PRINCIPAL DE ENTREGAS (Motorista)
   return (
     <div className={`min-h-screen bg-slate-900 flex items-center justify-center ${isMobileFrame ? 'p-0 sm:p-6' : 'p-0'}`}>
       
@@ -401,6 +461,8 @@ export function App() {
         isMobileFrame={isMobileFrame}
         onToggleMobileFrame={() => setIsMobileFrame(!isMobileFrame)}
         localIp={localIp}
+        userMode={userMode}
+        onToggleUserMode={() => handleSetUserMode('client')}
       />
 
       {/* Main Container / Mobile Frame */}
@@ -429,6 +491,7 @@ export function App() {
             setSoundEnabled(next);
             sound.setSoundEnabled(next);
           }}
+          onSwitchToClient={() => handleSetUserMode('client')}
         />
 
         {/* Main Content Area */}

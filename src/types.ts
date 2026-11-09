@@ -1,5 +1,7 @@
 export type VehicleType = 'moto' | 'carro' | 'fiorino' | 'van' | 'carreto' | 'caminhao';
 
+export type UserMode = 'client' | 'driver';
+
 export interface LocationPoint {
   address: string;
   neighborhood: string;
@@ -39,6 +41,13 @@ export interface Order {
   recipientName: string;
   clientNotes?: string;
   expiresInSeconds?: number;
+  driverId?: string;
+  driverName?: string;
+  driverPhone?: string;
+  driverPlate?: string;
+  driverModel?: string;
+  driverAvatar?: string;
+  driverRating?: number;
 }
 
 export interface DriverProfile {

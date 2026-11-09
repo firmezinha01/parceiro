@@ -5,11 +5,13 @@ import { sound } from '../sound';
 interface LoginScreenProps {
   onLogin: (phone: string) => void;
   onGoToRegister: () => void;
+  onSwitchToClient?: () => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
   onLogin,
   onGoToRegister,
+  onSwitchToClient,
 }) => {
   const [phone, setPhone] = useState('11984352781');
   const [password, setPassword] = useState('123456');
@@ -185,6 +187,28 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               >
                 Cadastre-se como motorista parceiro
               </button>
+
+              {/* Client Mode Switcher Button */}
+              {onSwitchToClient && (
+                <div className="pt-2">
+                  <div className="relative flex py-2 items-center">
+                    <div className="flex-grow border-t border-gray-200"></div>
+                    <span className="flex-shrink mx-3 text-[10px] text-gray-400 font-bold uppercase tracking-wider">ou para enviar</span>
+                    <div className="flex-grow border-t border-gray-200"></div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sound.playClick();
+                      onSwitchToClient();
+                    }}
+                    className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-black active:scale-[0.98] text-white font-extrabold text-xs tracking-wide transition-all shadow-md flex items-center justify-center gap-2"
+                  >
+                    <span>📦</span>
+                    <span>Solicitar Entrega como Cliente</span>
+                  </button>
+                </div>
+              )}
             </div>
 
           </form>

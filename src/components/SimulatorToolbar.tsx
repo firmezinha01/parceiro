@@ -3,7 +3,7 @@ import {
   Sparkles, Smartphone, Monitor, QrCode, Play, Pause, 
   Volume2, Plus, ChevronUp, ChevronDown, Wifi 
 } from 'lucide-react';
-import { VehicleType } from '../types';
+import { VehicleType, UserMode } from '../types';
 import { sound } from '../sound';
 
 interface SimulatorToolbarProps {
@@ -13,6 +13,8 @@ interface SimulatorToolbarProps {
   isMobileFrame: boolean;
   onToggleMobileFrame: () => void;
   localIp: string;
+  userMode?: UserMode;
+  onToggleUserMode?: () => void;
 }
 
 export const SimulatorToolbar: React.FC<SimulatorToolbarProps> = ({
@@ -22,6 +24,8 @@ export const SimulatorToolbar: React.FC<SimulatorToolbarProps> = ({
   isMobileFrame,
   onToggleMobileFrame,
   localIp,
+  userMode = 'driver',
+  onToggleUserMode,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showNetworkModal, setShowNetworkModal] = useState(false);
@@ -58,6 +62,27 @@ export const SimulatorToolbar: React.FC<SimulatorToolbarProps> = ({
                 <span>Abrir no Celular</span>
               </button>
             </div>
+
+            {/* Role Switcher */}
+            {onToggleUserMode && (
+              <div className="bg-zinc-800/80 p-2 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-gray-400 uppercase font-bold block">Modo Atual</span>
+                  <span className="text-xs font-black text-white flex items-center gap-1">
+                    {userMode === 'driver' ? '🚚 Motorista Parceiro' : '📦 Solicitante (Cliente)'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    sound.playClick();
+                    onToggleUserMode();
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-lala-orange hover:bg-lala-orangeDark text-white text-[11px] font-bold shadow transition-all active:scale-95"
+                >
+                  Alternar
+                </button>
+              </div>
+            )}
 
             {/* Quick Trigger Buttons */}
             <div>

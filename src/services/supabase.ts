@@ -71,6 +71,13 @@ export function mapDbOrderToOrder(row: any): Order {
     recipientName: row.delivery_contact_name || 'Destinatário',
     clientNotes: row.client_notes,
     expiresInSeconds: 25,
+    driverId: row.driver_id,
+    driverName: row.driver?.name || row.drivers?.name,
+    driverPhone: row.driver?.phone || row.drivers?.phone,
+    driverPlate: row.driver?.vehicle_plate || row.drivers?.vehicle_plate,
+    driverModel: row.driver?.vehicle_model || row.drivers?.vehicle_model,
+    driverAvatar: row.driver?.avatar_url || row.drivers?.avatar_url,
+    driverRating: Number(row.driver?.rating || row.drivers?.rating || 4.97),
   };
 }
 
