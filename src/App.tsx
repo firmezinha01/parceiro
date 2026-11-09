@@ -12,6 +12,7 @@ import { OrderIncomingModal } from './components/OrderIncomingModal';
 import { RegistrationFlow } from './components/RegistrationFlow';
 import { LoginScreen } from './components/LoginScreen';
 import { ClientOrderFlow } from './components/ClientOrderFlow';
+import { ClientRegistrationModal } from './components/ClientRegistrationModal';
 import { sound } from './sound';
 import { 
   supabase, 
@@ -40,6 +41,18 @@ export function App() {
   });
   const [driverId, setDriverId] = useState<string | null>(() => {
     return localStorage.getItem('parceiro_driver_id');
+  });
+
+  const [isClientRegisterOpen, setIsClientRegisterOpen] = useState(false);
+  const [roleChoice, setRoleChoice] = useState<{
+    isOpen: boolean;
+    driverData?: any;
+    clientData?: any;
+  } | null>(null);
+
+  const [currentClient, setCurrentClient] = useState<{ name: string; phone: string; address?: string } | null>(() => {
+    const saved = localStorage.getItem('parceiro_current_client');
+    return saved ? JSON.parse(saved) : null;
   });
 
   const [driver, setDriver] = useState<DriverProfile>(initialDriver);
@@ -122,46 +135,108 @@ export function App() {
     };
   }, [authView]);
 
-  // Handler for login from LoginScreen
-  const handleLogin = async (phoneInput: string) => {
+  // Smart Login Resolution
+  const handleSmartLogin = async (phoneInput: string, passwordInput?: string) => {
     sound.playClick();
-    if (isSupabaseConfigured) {
-      const { data } = await supabase
-        .from('drivers')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1);
+    const cleanPhone = phoneInput.replace(/\D/g, '');
 
-      if (data && data.length > 0) {
-        const found = data[0];
-        setDriver(mapDbDriverToProfile(found));
-        setDriverId(found.id);
-        localStorage.setItem('parceiro_driver_id', found.id);
-        setAuthView('panel');
-        sound.playCashSuccess();
-        return;
+    // 1. Check if registered as driver in Supabase
+    let foundDriver: any = null;
+    if (isSupabaseConfigured) {
+      try {
+        const { data } = await supabase.from('drivers').select('*');
+        if (data && data.length > 0) {
+          foundDriver = data.find((d: any) => d.phone && d.phone.replace(/\D/g, '').includes(cleanPhone.slice(-8)));
+        }
+      } catch (e) {
+        console.warn('Driver check error:', e);
       }
     }
 
-    const newDriverData = {
-      name: 'Carlos Alberto Silva',
-      phone: phoneInput || '(11) 98435-2781',
-      vehicle_type: 'fiorino',
-      vehicle_model: 'Fiat Fiorino 1.4 EVO',
-      vehicle_plate: 'BRA-2E19',
-      pix_key: phoneInput || 'carlos.silva@pix.com',
-      avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-    };
-    const created = await createDriverInSupabase(newDriverData);
-    if (created) {
-      setDriver(created.driver);
-      setDriverId(created.id);
-      localStorage.setItem('parceiro_driver_id', created.id);
-    } else {
-      const fallbackId = `drv-${Date.now()}`;
-      setDriverId(fallbackId);
-      localStorage.setItem('parceiro_driver_id', fallbackId);
+    // 2. Check if registered as client in localStorage or previous orders
+    const savedClientsRaw = localStorage.getItem('parceiro_registered_clients');
+    let savedClients: any[] = [];
+    try { savedClients = savedClientsRaw ? JSON.parse(savedClientsRaw) : []; } catch(e){}
+    let foundClient = savedClients.find((c: any) => c.phone && c.phone.replace(/\D/g, '').includes(cleanPhone.slice(-8)));
+
+    if (!foundClient && isSupabaseConfigured) {
+      try {
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select('pickup_contact_name, pickup_contact_phone, pickup_address')
+          .order('created_at', { ascending: false });
+        if (orderData && orderData.length > 0) {
+          const matchingOrder = orderData.find((o: any) => o.pickup_contact_phone && o.pickup_contact_phone.replace(/\D/g, '').includes(cleanPhone.slice(-8)));
+          if (matchingOrder) {
+            foundClient = {
+              name: matchingOrder.pickup_contact_name || 'Cliente Parceiro',
+              phone: matchingOrder.pickup_contact_phone || phoneInput,
+              address: matchingOrder.pickup_address || '',
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('Order client check error:', e);
+      }
     }
+
+    // 3. Resolve role:
+    if (foundDriver && foundClient) {
+      // Both profiles found! Open modal for user to choose
+      setRoleChoice({
+        isOpen: true,
+        driverData: foundDriver,
+        clientData: foundClient,
+      });
+      return;
+    }
+
+    if (foundDriver) {
+      // ONLY driver
+      setDriver(mapDbDriverToProfile(foundDriver));
+      setDriverId(foundDriver.id);
+      localStorage.setItem('parceiro_driver_id', foundDriver.id);
+      setUserMode('driver');
+      localStorage.setItem('parceiro_user_mode', 'driver');
+      setAuthView('panel');
+      sound.playCashSuccess();
+      return;
+    }
+
+    if (foundClient) {
+      // ONLY client
+      setCurrentClient(foundClient);
+      localStorage.setItem('parceiro_current_client', JSON.stringify(foundClient));
+      setUserMode('client');
+      localStorage.setItem('parceiro_user_mode', 'client');
+      setAuthView('panel');
+      sound.playCashSuccess();
+      return;
+    }
+
+    // If neither exists yet:
+    alert('Telefone não cadastrado. Por favor, clique em "Cadastre-se como motorista parceiro" ou "Cadastre-se como cliente" para criar sua conta!');
+  };
+
+  const handleSelectRole = (role: 'driver' | 'client') => {
+    if (!roleChoice) return;
+    if (role === 'driver') {
+      if (roleChoice.driverData) {
+        setDriver(mapDbDriverToProfile(roleChoice.driverData));
+        setDriverId(roleChoice.driverData.id);
+        localStorage.setItem('parceiro_driver_id', roleChoice.driverData.id);
+      }
+      setUserMode('driver');
+      localStorage.setItem('parceiro_user_mode', 'driver');
+    } else {
+      if (roleChoice.clientData) {
+        setCurrentClient(roleChoice.clientData);
+        localStorage.setItem('parceiro_current_client', JSON.stringify(roleChoice.clientData));
+      }
+      setUserMode('client');
+      localStorage.setItem('parceiro_user_mode', 'client');
+    }
+    setRoleChoice(null);
     setAuthView('panel');
     sound.playCashSuccess();
   };
@@ -185,7 +260,9 @@ export function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('parceiro_driver_id');
+    localStorage.removeItem('parceiro_current_client');
     setDriverId(null);
+    setCurrentClient(null);
     setActiveOrder(null);
     setAuthView('login');
   };
@@ -240,6 +317,18 @@ export function App() {
   };
 
   const handleAcceptOrder = (order: Order) => {
+    // Anti-self acceptance rule: cannot accept an order you requested yourself
+    const isSelfOrder = Boolean(
+      (order.pickup.contactPhone && driver.phone && order.pickup.contactPhone.replace(/\D/g, '') === driver.phone.replace(/\D/g, '')) ||
+      (order.senderName && driver.name && order.senderName.trim().toLowerCase() === driver.name.trim().toLowerCase())
+    );
+
+    if (isSelfOrder) {
+      sound.playClick();
+      alert('Operação não permitida: Você não pode aceitar uma corrida que você mesmo solicitou como cliente!');
+      return;
+    }
+
     setIncomingOrder(null);
     setActiveOrder(order);
     setIsViewingActiveOrder(true);
@@ -352,7 +441,42 @@ export function App() {
     );
   }
 
-  // 0. MODO SOLICITANTE / CLIENTE (Chamar Fretes & Entregas)
+  // 1. TELA DE LOGIN UNIFICADA (Identifica se é Cliente, Motorista ou Ambos)
+  if (authView === 'login') {
+    return (
+      <>
+        <LoginScreen
+          onLogin={handleSmartLogin}
+          onGoToDriverRegister={() => setAuthView('register')}
+          onGoToClientRegister={() => setIsClientRegisterOpen(true)}
+          roleChoiceModal={roleChoice ? { isOpen: true, onSelectRole: handleSelectRole } : undefined}
+        />
+        <ClientRegistrationModal
+          isOpen={isClientRegisterOpen}
+          onClose={() => setIsClientRegisterOpen(false)}
+          onRegisterSuccess={(clientData) => {
+            setCurrentClient(clientData);
+            setUserMode('client');
+            localStorage.setItem('parceiro_user_mode', 'client');
+            setAuthView('panel');
+            setIsClientRegisterOpen(false);
+          }}
+        />
+      </>
+    );
+  }
+
+  // 2. TELA DE CADASTRO MOTORISTA & AVERIGUAÇÃO DE DOCUMENTOS (Upload Real)
+  if (authView === 'register') {
+    return (
+      <RegistrationFlow 
+        onCompleteRegistration={handleCompleteRegistration}
+        onBackToLogin={() => setAuthView('login')}
+      />
+    );
+  }
+
+  // 3. PAINEL DO CLIENTE / SOLICITANTE (Chamar Fretes & Entregas)
   if (userMode === 'client') {
     return (
       <div className={`min-h-screen bg-slate-900 flex items-center justify-center ${isMobileFrame ? 'p-0 sm:p-6' : 'p-0'}`}>
@@ -370,35 +494,15 @@ export function App() {
           )}
 
           <ClientOrderFlow
-            onSwitchToDriver={() => handleSetUserMode('driver')}
+            onLogout={handleLogout}
+            currentClient={currentClient || undefined}
           />
         </div>
       </div>
     );
   }
 
-  // 1. TELA INICIAL MOTORISTA (Login conforme a foto enviada)
-  if (authView === 'login') {
-    return (
-      <LoginScreen
-        onLogin={handleLogin}
-        onGoToRegister={() => setAuthView('register')}
-        onSwitchToClient={() => handleSetUserMode('client')}
-      />
-    );
-  }
-
-  // 2. TELA DE CADASTRO MOTORISTA & AVERIGUAÇÃO DE DOCUMENTOS (Upload Real)
-  if (authView === 'register') {
-    return (
-      <RegistrationFlow 
-        onCompleteRegistration={handleCompleteRegistration}
-        onBackToLogin={() => setAuthView('login')}
-      />
-    );
-  }
-
-  // 3. PAINEL PRINCIPAL DE ENTREGAS (Motorista)
+  // 4. PAINEL PRINCIPAL DE ENTREGAS (Motorista)
   return (
     <div className={`min-h-screen bg-slate-900 flex items-center justify-center ${isMobileFrame ? 'p-0 sm:p-6' : 'p-0'}`}>
       
@@ -417,7 +521,7 @@ export function App() {
           </div>
         )}
 
-        {/* Global App Header */}
+        {/* Global App Header (Exclusivo Motorista) */}
         <Header
           driver={driver}
           onToggleOnline={handleToggleOnline}
@@ -428,7 +532,6 @@ export function App() {
             setSoundEnabled(next);
             sound.setSoundEnabled(next);
           }}
-          onSwitchToClient={() => handleSetUserMode('client')}
         />
 
         {/* Main Content Area */}

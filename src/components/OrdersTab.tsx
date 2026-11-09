@@ -219,6 +219,17 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
                 </span>
               </div>
 
+              {/* Anti-self acceptance check */}
+              {Boolean(
+                (order.pickup.contactPhone && driver.phone && order.pickup.contactPhone.replace(/\D/g, '') === driver.phone.replace(/\D/g, '')) ||
+                (order.senderName && driver.name && order.senderName.trim().toLowerCase() === driver.name.trim().toLowerCase())
+              ) && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Você é o solicitante deste pedido (Auto-atendimento proibido).</span>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
                 <button
@@ -230,16 +241,29 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
                 >
                   Detalhes
                 </button>
-                <button
-                  onClick={() => {
-                    sound.playClick();
-                    onAcceptOrder(order);
-                  }}
-                  className="w-2/3 py-2.5 rounded-xl bg-lala-orange hover:bg-lala-orangeDark active:scale-95 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-orange-500/20 transition-all flex items-center justify-center gap-1.5"
-                >
-                  <span>ACEITAR CORRIDA</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                {Boolean(
+                  (order.pickup.contactPhone && driver.phone && order.pickup.contactPhone.replace(/\D/g, '') === driver.phone.replace(/\D/g, '')) ||
+                  (order.senderName && driver.name && order.senderName.trim().toLowerCase() === driver.name.trim().toLowerCase())
+                ) ? (
+                  <button
+                    disabled
+                    className="w-2/3 py-2.5 rounded-xl bg-gray-200 text-gray-400 font-black text-xs uppercase tracking-wider cursor-not-allowed text-center"
+                    title="Não é permitido aceitar corridas solicitadas por você mesmo"
+                  >
+                    SEU PRÓPRIO PEDIDO
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      sound.playClick();
+                      onAcceptOrder(order);
+                    }}
+                    className="w-2/3 py-2.5 rounded-xl bg-lala-orange hover:bg-lala-orangeDark active:scale-95 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-orange-500/20 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <span>ACEITAR CORRIDA</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           ))}

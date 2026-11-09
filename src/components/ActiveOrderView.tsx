@@ -39,6 +39,8 @@ export const ActiveOrderView: React.FC<ActiveOrderViewProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState<OrderStatus>(order.status || 'to_pickup');
   const [receiverName, setReceiverName] = useState(order.recipientName || 'Destinatário');
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
+  const mapSectionRef = useRef<HTMLDivElement>(null);
   
   // Real GPS tracking state
   const [driverGps, setDriverGps] = useState<{ lat: number; lng: number } | null>(null);
@@ -317,13 +319,33 @@ export const ActiveOrderView: React.FC<ActiveOrderViewProps> = ({
       </div>
 
       {/* Real Interactive Map with live GPS */}
-      <div className="p-3">
+      <div ref={mapSectionRef} className="p-3 transition-all duration-300">
+        {isMapExpanded && (
+          <div className="mb-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-3 rounded-2xl flex items-center justify-between shadow-md animate-fade-in">
+            <div className="flex items-center gap-2">
+              <Navigation className="w-5 h-5 text-emerald-200 animate-pulse" />
+              <div>
+                <span className="text-[10px] uppercase font-black text-emerald-100 block">Navegando no Aplicativo Parceiro</span>
+                <p className="text-xs font-bold truncate max-w-[220px]">
+                  Rumo a: {activeTargetPoint.address}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsMapExpanded(false)}
+              className="text-xs bg-black/25 hover:bg-black/40 text-white px-2.5 py-1 rounded-xl font-bold transition-colors"
+            >
+              ✕ Reduzir
+            </button>
+          </div>
+        )}
+
         <InteractiveMap
           pickup={['to_pickup', 'at_pickup'].includes(currentStep) ? order.pickup : undefined}
           delivery={['in_transit', 'at_delivery'].includes(currentStep) ? order.delivery : undefined}
           driverPosition={driverGps || undefined}
           showRoute={true}
-          className="h-56 shadow-md rounded-2xl"
+          className={`${isMapExpanded ? 'h-96' : 'h-56'} shadow-md rounded-2xl transition-all duration-300`}
         />
       </div>
 
@@ -369,16 +391,21 @@ export const ActiveOrderView: React.FC<ActiveOrderViewProps> = ({
             >
               <Phone className="w-4 h-4 text-emerald-600" />
             </button>
-            <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(activeTargetPoint.address)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1 transition-all shadow-sm"
-              title="Abrir no Google Maps"
+            <button
+              type="button"
+              onClick={() => {
+                sound.playClick();
+                setIsMapExpanded(!isMapExpanded);
+                mapSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 ${
+                isMapExpanded ? 'bg-zinc-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+              title="Abrir rota no mapa interno do aplicativo"
             >
               <Navigation className="w-3.5 h-3.5" />
-              <span>Rotas</span>
-            </a>
+              <span>{isMapExpanded ? 'Reduzir' : 'Rotas'}</span>
+            </button>
           </div>
         </div>
 

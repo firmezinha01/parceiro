@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, ChevronDown, Sparkles, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, ChevronDown, Sparkles, ShieldCheck, Truck, Package, ArrowRight } from 'lucide-react';
 import { sound } from '../sound';
 
 interface LoginScreenProps {
-  onLogin: (phone: string) => void;
-  onGoToRegister: () => void;
-  onSwitchToClient?: () => void;
+  onLogin: (phone: string, password?: string) => void;
+  onGoToDriverRegister: () => void;
+  onGoToClientRegister: () => void;
+  roleChoiceModal?: {
+    isOpen: boolean;
+    onSelectRole: (role: 'driver' | 'client') => void;
+  };
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
   onLogin,
-  onGoToRegister,
-  onSwitchToClient,
+  onGoToDriverRegister,
+  onGoToClientRegister,
+  roleChoiceModal,
 }) => {
   const [phone, setPhone] = useState('11984352781');
   const [password, setPassword] = useState('123456');
@@ -27,7 +32,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     e.preventDefault();
     if (!isValid) return;
     sound.playClick();
-    onLogin(phone.trim());
+    onLogin(phone.trim(), password.trim());
   };
 
   const handleSendResetCode = (e: React.FormEvent) => {
@@ -63,15 +68,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               </h1>
             </div>
             <span className="bg-orange-50 text-lala-orange text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-orange-200 uppercase tracking-wider">
-              Motorista
+              Acesso Único
             </span>
           </div>
 
           {/* Hero Illustration */}
-          <div className="relative w-full h-56 px-4 flex items-end justify-center overflow-hidden">
+          <div className="relative w-full h-52 px-4 flex items-end justify-center overflow-hidden">
             {/* City Silhouette Background */}
             <svg 
-              className="absolute bottom-0 inset-x-0 w-full h-32 opacity-20 text-gray-400 pointer-events-none" 
+              className="absolute bottom-0 inset-x-0 w-full h-28 opacity-20 text-gray-400 pointer-events-none" 
               viewBox="0 0 500 150" 
               preserveAspectRatio="none" 
               fill="currentColor"
@@ -85,20 +90,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 <img 
                   src="/logo-character.png" 
                   alt="Mascote Parceiro Entregas" 
-                  className="h-44 object-contain filter drop-shadow-xl transform hover:scale-105 transition-transform"
+                  className="h-40 object-contain filter drop-shadow-xl transform hover:scale-105 transition-transform"
                 />
-                {/* Speed lines */}
-                <div className="absolute left-[-20px] top-1/2 flex flex-col gap-1.5 opacity-60">
-                  <div className="w-6 h-1 bg-lala-orange rounded-full animate-pulse" />
-                  <div className="w-10 h-1 bg-lala-orange rounded-full" />
-                  <div className="w-4 h-1 bg-lala-orange rounded-full animate-pulse" />
-                </div>
               </div>
             </div>
           </div>
 
           {/* Form Section */}
-          <form onSubmit={handleSubmit} className="px-6 pt-3 space-y-4">
+          <form onSubmit={handleSubmit} className="px-6 pt-2 space-y-3.5">
             
             {/* Phone Number Input */}
             <div className="border border-gray-200 rounded-2xl p-2.5 focus-within:border-lala-orange focus-within:ring-2 focus-within:ring-orange-100 transition-all bg-white shadow-sm">
@@ -162,7 +161,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
 
             {/* Action Buttons */}
-            <div className="space-y-3 pt-4">
+            <div className="space-y-2.5 pt-2">
               {/* Primary Login Button */}
               <button
                 type="submit"
@@ -176,39 +175,40 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 Iniciar sessão
               </button>
 
-              {/* Secondary Register Button */}
+              {/* Registration Options Divider */}
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-gray-200"></div>
+                <span className="flex-shrink mx-3 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                  Novo por aqui? Cadastre-se:
+                </span>
+                <div className="flex-grow border-t border-gray-200"></div>
+              </div>
+
+              {/* Button: Register as Driver */}
               <button
                 type="button"
                 onClick={() => {
                   sound.playClick();
-                  onGoToRegister();
+                  onGoToDriverRegister();
                 }}
-                className="w-full py-3.5 rounded-2xl border-2 border-lala-orange bg-white hover:bg-orange-50/60 active:scale-[0.98] text-lala-orange font-black text-sm tracking-wide transition-all shadow-sm"
+                className="w-full py-3 rounded-2xl border-2 border-lala-orange bg-white hover:bg-orange-50/60 active:scale-[0.98] text-lala-orange font-black text-xs tracking-wide transition-all shadow-sm flex items-center justify-center gap-2"
               >
-                Cadastre-se como motorista parceiro
+                <Truck className="w-4 h-4" />
+                <span>Cadastre-se como motorista parceiro</span>
               </button>
 
-              {/* Client Mode Switcher Button */}
-              {onSwitchToClient && (
-                <div className="pt-2">
-                  <div className="relative flex py-2 items-center">
-                    <div className="flex-grow border-t border-gray-200"></div>
-                    <span className="flex-shrink mx-3 text-[10px] text-gray-400 font-bold uppercase tracking-wider">ou para enviar</span>
-                    <div className="flex-grow border-t border-gray-200"></div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      sound.playClick();
-                      onSwitchToClient();
-                    }}
-                    className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-black active:scale-[0.98] text-white font-extrabold text-xs tracking-wide transition-all shadow-md flex items-center justify-center gap-2"
-                  >
-                    <span>📦</span>
-                    <span>Solicitar Entrega como Cliente</span>
-                  </button>
-                </div>
-              )}
+              {/* Button: Register as Client */}
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  onGoToClientRegister();
+                }}
+                className="w-full py-3 rounded-2xl border-2 border-emerald-600 bg-white hover:bg-emerald-50/60 active:scale-[0.98] text-emerald-700 font-black text-xs tracking-wide transition-all shadow-sm flex items-center justify-center gap-2"
+              >
+                <Package className="w-4 h-4" />
+                <span>Cadastre-se como cliente</span>
+              </button>
             </div>
 
           </form>
@@ -216,7 +216,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-5 text-center">
+        <div className="p-4 text-center">
           <p className="text-[11px] text-gray-400 font-medium">
             <span className="hover:underline cursor-pointer">Termos e Condições</span>
             {' • '}
@@ -225,6 +225,57 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         </div>
 
       </div>
+
+      {/* Role Selection Modal (If user is registered as BOTH Driver and Client) */}
+      {roleChoiceModal?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-4 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-orange-100 text-lala-orange flex items-center justify-center mx-auto">
+              <ShieldCheck className="w-7 h-7" />
+            </div>
+
+            <div>
+              <h3 className="font-black text-base text-gray-900">Dois Perfis Identificados!</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Seu número possui cadastro ativo tanto como <b>Motorista Parceiro</b> quanto como <b>Cliente Solicitante</b>.
+              </p>
+              <p className="text-xs font-bold text-gray-700 mt-2">
+                Como você deseja entrar hoje?
+              </p>
+            </div>
+
+            <div className="space-y-2.5 pt-2">
+              <button
+                onClick={() => {
+                  sound.playClick();
+                  roleChoiceModal.onSelectRole('driver');
+                }}
+                className="w-full py-3.5 px-4 rounded-2xl bg-lala-orange hover:bg-lala-orangeDark text-white font-extrabold text-xs uppercase tracking-wider flex items-center justify-between shadow-md active:scale-95 transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <Truck className="w-5 h-5" />
+                  <span>Entrar como Motorista</span>
+                </div>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => {
+                  sound.playClick();
+                  roleChoiceModal.onSelectRole('client');
+                }}
+                className="w-full py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-black text-white font-extrabold text-xs uppercase tracking-wider flex items-center justify-between shadow-md active:scale-95 transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  <span>Entrar como Cliente</span>
+                </div>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Forgot Password Modal */}
       {showForgotModal && (

@@ -65,10 +65,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         attributionControl: false,
       });
 
-      // Clean Google Maps Street tiles (100% free, no API key required, fast CDN in Brazil)
-      L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-        maxZoom: 20,
-        subdomains: ['0', '1', '2', '3'],
+      // 100% Free OpenStreetMap tile server - Zero API keys, no watermarks, full detail
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors',
       }).addTo(map);
 
       // Custom icon for Driver (animated pulse)

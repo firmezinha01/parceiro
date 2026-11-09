@@ -9,7 +9,6 @@ interface HeaderProps {
   onChangeVehicle: (type: VehicleType) => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
-  onSwitchToClient?: () => void;
 }
 
 const vehicleLabels: Record<VehicleType, { label: string; icon: string }> = {
@@ -27,7 +26,6 @@ export const Header: React.FC<HeaderProps> = ({
   onChangeVehicle,
   soundEnabled,
   onToggleSound,
-  onSwitchToClient,
 }) => {
   const [showVehicleMenu, setShowVehicleMenu] = React.useState(false);
 
@@ -63,22 +61,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Top actions: Switch to Client, Sound & Today Earnings */}
+        {/* Top actions: Sound & Today Earnings */}
         <div className="flex items-center gap-2">
-          {onSwitchToClient && (
-            <button
-              onClick={() => {
-                sound.playClick();
-                onSwitchToClient();
-              }}
-              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:brightness-110 text-white text-[11px] font-black flex items-center gap-1 shadow-sm active:scale-95 transition-all"
-              title="Mudar para Modo Solicitante / Pedir Entrega"
-            >
-              <span>📦</span>
-              <span className="hidden sm:inline">Chamar Entrega</span>
-            </button>
-          )}
-
           <button
             onClick={() => {
               sound.playClick();

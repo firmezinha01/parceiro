@@ -10,7 +10,8 @@ import { sound } from '../sound';
 import { createRealOrderInSupabase, getDriverFromSupabase, supabase } from '../services/supabase';
 
 interface ClientOrderFlowProps {
-  onSwitchToDriver: () => void;
+  onLogout: () => void;
+  currentClient?: { name: string; phone: string; address?: string };
 }
 
 const vehicleOptions: { type: VehicleType; label: string; icon: string; capacity: string; basePrice: number; perKm: number }[] = [
@@ -23,12 +24,13 @@ const vehicleOptions: { type: VehicleType; label: string; icon: string; capacity
 ];
 
 export const ClientOrderFlow: React.FC<ClientOrderFlowProps> = ({
-  onSwitchToDriver,
+  onLogout,
+  currentClient,
 }) => {
   // Form fields
-  const [pickupAddress, setPickupAddress] = useState('Av. Paulista, 1578 - Bela Vista, São Paulo');
-  const [pickupContact, setPickupContact] = useState('Carlos Eduardo');
-  const [pickupPhone, setPickupPhone] = useState('(11) 98765-4321');
+  const [pickupAddress, setPickupAddress] = useState(currentClient?.address || 'Av. Paulista, 1578 - Bela Vista, São Paulo');
+  const [pickupContact, setPickupContact] = useState(currentClient?.name || 'Carlos Eduardo');
+  const [pickupPhone, setPickupPhone] = useState(currentClient?.phone || '(11) 98765-4321');
   const [pickupInstructions, setPickupInstructions] = useState('Retirar na portaria principal');
 
   const [deliveryAddress, setDeliveryAddress] = useState('Rua Augusta, 2400 - Cerqueira César, São Paulo');
@@ -206,17 +208,18 @@ export const ClientOrderFlow: React.FC<ClientOrderFlowProps> = ({
             </div>
           </div>
 
-          {/* Switch to Driver Mode Button */}
+          {/* Logout Button */}
           <button
             onClick={() => {
               sound.playClick();
-              onSwitchToDriver();
+              if (confirm('Deseja sair da sua conta de cliente?')) {
+                onLogout();
+              }
             }}
-            className="py-1.5 px-3 rounded-xl bg-lala-orange hover:bg-lala-orangeDark text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-orange-500/20 active:scale-95 transition-all"
-            title="Mudar para o Painel do Motorista"
+            className="py-1 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-gray-300 hover:text-white text-xs font-bold border border-zinc-700 transition-colors"
+            title="Sair da conta"
           >
-            <span>🚚</span>
-            <span>Sou Motorista</span>
+            Sair
           </button>
         </div>
       </header>
