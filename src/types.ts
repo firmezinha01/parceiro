@@ -48,6 +48,13 @@ export interface Order {
   driverModel?: string;
   driverAvatar?: string;
   driverRating?: number;
+  pickupSecurityCode?: string;
+  deliverySecurityCode?: string;
+  pickupPhotoUrl?: string;
+  deliveryPhotoUrl?: string;
+  waitingTimeSeconds?: number;
+  arrivedPickupAt?: string;
+  arrivedDeliveryAt?: string;
 }
 
 export interface DriverProfile {

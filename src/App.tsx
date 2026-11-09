@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { initialDriver, generateRandomOrder } from './mockData';
+import { initialDriver } from './mockData';
 import { DriverProfile, Order, WalletTransaction, VehicleType, OrderStatus, UserMode } from './types';
 import { Header } from './components/Header';
 import { BottomNav, NavTab } from './components/BottomNav';
@@ -9,7 +9,6 @@ import { WalletTab } from './components/WalletTab';
 import { MapTab } from './components/MapTab';
 import { ProfileTab } from './components/ProfileTab';
 import { OrderIncomingModal } from './components/OrderIncomingModal';
-import { SimulatorToolbar } from './components/SimulatorToolbar';
 import { RegistrationFlow } from './components/RegistrationFlow';
 import { LoginScreen } from './components/LoginScreen';
 import { ClientOrderFlow } from './components/ClientOrderFlow';
@@ -51,7 +50,6 @@ export function App() {
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [activeTab, setActiveTab] = useState<NavTab>('orders');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-  const [isAutoSimulating, setIsAutoSimulating] = useState<boolean>(false);
   const [isMobileFrame, setIsMobileFrame] = useState<boolean>(false);
   const [isLoadingDriver, setIsLoadingDriver] = useState<boolean>(true);
   const localIp = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.hostname : '192.168.15.174';
@@ -123,23 +121,6 @@ export function App() {
       supabase.removeChannel(channel);
     };
   }, [authView]);
-
-  // Periodic automatic order generator when simulator is on (creates real rows in Supabase)
-  useEffect(() => {
-    if (!isAutoSimulating || !driver.isOnline || activeOrder || authView !== 'panel') return;
-
-    const timer = setInterval(() => {
-      const generated = generateRandomOrder(driver.vehicleType);
-      createRealOrderInSupabase(generated).then(createdOrder => {
-        if (!createdOrder) {
-          setOrders(prev => [generated, ...prev]);
-          setIncomingOrder(generated);
-        }
-      });
-    }, 25000);
-
-    return () => clearInterval(timer);
-  }, [isAutoSimulating, driver.isOnline, activeOrder, driver.vehicleType, authView]);
 
   // Handler for login from LoginScreen
   const handleLogin = async (phoneInput: string) => {
@@ -252,19 +233,10 @@ export function App() {
     }
   };
 
-  const handleTriggerManualOrder = async (vehicle?: VehicleType) => {
-    sound.playClick();
-    if (!driver.isOnline) {
-      setDriver(prev => ({ ...prev, isOnline: true }));
-      if (driverId) updateDriverInSupabase(driverId, { isOnline: true });
-    }
-    const newOrd = generateRandomOrder(vehicle || driver.vehicleType);
-
-    const createdInDb = await createRealOrderInSupabase(newOrd);
-    if (!createdInDb) {
-      setOrders(prev => [newOrd, ...prev.filter(o => o.id !== newOrd.id)]);
-      setIncomingOrder(newOrd);
-    }
+  const handleUpdateActiveOrderStatus = (status: OrderStatus, extra?: any) => {
+    if (!activeOrder) return;
+    updateOrderStatusInDb(activeOrder.id, status, driverId || undefined, extra);
+    setActiveOrder(prev => prev ? { ...prev, status, ...extra } : null);
   };
 
   const handleAcceptOrder = (order: Order) => {
@@ -384,17 +356,6 @@ export function App() {
   if (userMode === 'client') {
     return (
       <div className={`min-h-screen bg-slate-900 flex items-center justify-center ${isMobileFrame ? 'p-0 sm:p-6' : 'p-0'}`}>
-        <SimulatorToolbar
-          onTriggerOrder={handleTriggerManualOrder}
-          isAutoSimulating={isAutoSimulating}
-          onToggleAutoSimulate={() => setIsAutoSimulating(!isAutoSimulating)}
-          isMobileFrame={isMobileFrame}
-          onToggleMobileFrame={() => setIsMobileFrame(!isMobileFrame)}
-          localIp={localIp}
-          userMode={userMode}
-          onToggleUserMode={() => handleSetUserMode('driver')}
-        />
-
         <div 
           className={`w-full bg-white flex flex-col relative overflow-hidden transition-all duration-300 ${
             isMobileFrame 
@@ -419,23 +380,11 @@ export function App() {
   // 1. TELA INICIAL MOTORISTA (Login conforme a foto enviada)
   if (authView === 'login') {
     return (
-      <>
-        <SimulatorToolbar
-          onTriggerOrder={handleTriggerManualOrder}
-          isAutoSimulating={isAutoSimulating}
-          onToggleAutoSimulate={() => setIsAutoSimulating(!isAutoSimulating)}
-          isMobileFrame={isMobileFrame}
-          onToggleMobileFrame={() => setIsMobileFrame(!isMobileFrame)}
-          localIp={localIp}
-          userMode={userMode}
-          onToggleUserMode={() => handleSetUserMode('client')}
-        />
-        <LoginScreen
-          onLogin={handleLogin}
-          onGoToRegister={() => setAuthView('register')}
-          onSwitchToClient={() => handleSetUserMode('client')}
-        />
-      </>
+      <LoginScreen
+        onLogin={handleLogin}
+        onGoToRegister={() => setAuthView('register')}
+        onSwitchToClient={() => handleSetUserMode('client')}
+      />
     );
   }
 
@@ -453,18 +402,6 @@ export function App() {
   return (
     <div className={`min-h-screen bg-slate-900 flex items-center justify-center ${isMobileFrame ? 'p-0 sm:p-6' : 'p-0'}`}>
       
-      {/* Simulator Quick Action Toolbar */}
-      <SimulatorToolbar
-        onTriggerOrder={handleTriggerManualOrder}
-        isAutoSimulating={isAutoSimulating}
-        onToggleAutoSimulate={() => setIsAutoSimulating(!isAutoSimulating)}
-        isMobileFrame={isMobileFrame}
-        onToggleMobileFrame={() => setIsMobileFrame(!isMobileFrame)}
-        localIp={localIp}
-        userMode={userMode}
-        onToggleUserMode={() => handleSetUserMode('client')}
-      />
-
       {/* Main Container / Mobile Frame */}
       <div 
         className={`w-full bg-white flex flex-col relative overflow-hidden transition-all duration-300 ${
@@ -500,7 +437,7 @@ export function App() {
           {activeOrder && isViewingActiveOrder ? (
             <ActiveOrderView
               order={activeOrder}
-              onUpdateStatus={(status) => updateOrderStatusInDb(activeOrder.id, status, driverId || undefined)}
+              onUpdateStatus={handleUpdateActiveOrderStatus}
               onComplete={handleCompleteOrder}
               onCancel={handleCancelActiveOrder}
               onMinimize={() => setIsViewingActiveOrder(false)}

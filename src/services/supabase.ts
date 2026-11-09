@@ -34,6 +34,18 @@ export function mapDbDriverToProfile(row: any): DriverProfile {
 
 // Map database row to Order interface
 export function mapDbOrderToOrder(row: any): Order {
+  let meta: any = {};
+  let displayNotes = row.client_notes || '';
+  if (displayNotes.includes('__META__:')) {
+    try {
+      const parts = displayNotes.split('__META__:');
+      displayNotes = parts[0].trim();
+      meta = JSON.parse(parts[1] || '{}');
+    } catch (e) {
+      // ignore
+    }
+  }
+
   return {
     id: row.id,
     code: row.code || `PRC-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -69,7 +81,7 @@ export function mapDbOrderToOrder(row: any): Order {
     },
     senderName: row.pickup_contact_name || 'Remetente',
     recipientName: row.delivery_contact_name || 'Destinatário',
-    clientNotes: row.client_notes,
+    clientNotes: displayNotes || undefined,
     expiresInSeconds: 25,
     driverId: row.driver_id,
     driverName: row.driver?.name || row.drivers?.name,
@@ -78,6 +90,13 @@ export function mapDbOrderToOrder(row: any): Order {
     driverModel: row.driver?.vehicle_model || row.drivers?.vehicle_model,
     driverAvatar: row.driver?.avatar_url || row.drivers?.avatar_url,
     driverRating: Number(row.driver?.rating || row.drivers?.rating || 4.97),
+    pickupSecurityCode: row.pickup_security_code || meta.pickupSecurityCode || '1234',
+    deliverySecurityCode: row.delivery_security_code || meta.deliverySecurityCode || '5678',
+    pickupPhotoUrl: row.pickup_photo_url || meta.pickupPhotoUrl,
+    deliveryPhotoUrl: row.delivery_photo_url || meta.deliveryPhotoUrl,
+    waitingTimeSeconds: row.waiting_time_seconds || meta.waitingTimeSeconds || 0,
+    arrivedPickupAt: row.arrived_pickup_at || meta.arrivedPickupAt,
+    arrivedDeliveryAt: row.arrived_delivery_at || meta.arrivedDeliveryAt,
   };
 }
 
@@ -183,6 +202,14 @@ export async function getAvailableOrdersFromSupabase(): Promise<Order[] | null> 
 export async function createRealOrderInSupabase(order: Order): Promise<Order | null> {
   if (!isSupabaseConfigured) return null;
   try {
+    const meta = {
+      pickupSecurityCode: order.pickupSecurityCode || Math.floor(1000 + Math.random() * 9000).toString(),
+      deliverySecurityCode: order.deliverySecurityCode || Math.floor(1000 + Math.random() * 9000).toString(),
+    };
+    const clientNotesWithMeta = order.clientNotes 
+      ? `${order.clientNotes.trim()}\n__META__:${JSON.stringify(meta)}`
+      : `__META__:${JSON.stringify(meta)}`;
+
     const payload = {
       code: order.code,
       vehicle_type: order.vehicleType,
@@ -192,7 +219,7 @@ export async function createRealOrderInSupabase(order: Order): Promise<Order | n
       estimated_minutes: order.estimatedMinutes,
       cargo_type: order.cargoType,
       cargo_weight_kg: order.cargoWeightKg || null,
-      client_notes: order.clientNotes || null,
+      client_notes: clientNotesWithMeta,
       payment_method: order.paymentMethod,
       status: 'available',
       pickup_address: order.pickup.address,
@@ -229,12 +256,43 @@ export async function createRealOrderInSupabase(order: Order): Promise<Order | n
 }
 
 // Update order status in Supabase
-export async function updateOrderStatusInDb(orderId: string, status: string, driverId?: string) {
+export async function updateOrderStatusInDb(
+  orderId: string, 
+  status: string, 
+  driverId?: string,
+  extra?: {
+    pickupPhotoUrl?: string;
+    deliveryPhotoUrl?: string;
+    waitingTimeSeconds?: number;
+    pickupSecurityCode?: string;
+    deliverySecurityCode?: string;
+  }
+) {
   if (!isSupabaseConfigured) return;
   try {
     const updatePayload: Record<string, any> = { status };
     if (driverId) updatePayload.driver_id = driverId;
     if (status === 'completed') updatePayload.completed_at = new Date().toISOString();
+
+    // If extra fields provided, persist them in meta inside client_notes
+    if (extra && Object.keys(extra).length > 0) {
+      try {
+        const { data: existing } = await supabase.from('orders').select('client_notes').eq('id', orderId).single();
+        if (existing) {
+          let currentNotes = existing.client_notes || '';
+          let currentMeta: any = {};
+          if (currentNotes.includes('__META__:')) {
+            const parts = currentNotes.split('__META__:');
+            currentNotes = parts[0].trim();
+            try { currentMeta = JSON.parse(parts[1] || '{}'); } catch (e) {}
+          }
+          const mergedMeta = { ...currentMeta, ...extra };
+          updatePayload.client_notes = `${currentNotes}\n__META__:${JSON.stringify(mergedMeta)}`.trim();
+        }
+      } catch (e) {
+        console.warn('Meta update fallback:', e);
+      }
+    }
 
     await supabase.from('orders').update(updatePayload).eq('id', orderId);
   } catch (err) {

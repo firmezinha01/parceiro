@@ -136,6 +136,8 @@ export const ClientOrderFlow: React.FC<ClientOrderFlowProps> = ({
     sound.playClick();
     setIsSubmitting(true);
 
+    const pickupPin = Math.floor(1000 + Math.random() * 9000).toString();
+    const deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
     const newCode = `PRC-${Math.floor(1000 + Math.random() * 9000)}`;
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
@@ -155,6 +157,8 @@ export const ClientOrderFlow: React.FC<ClientOrderFlowProps> = ({
       delivery: deliveryPoint,
       senderName: pickupContact,
       recipientName: deliveryContact,
+      pickupSecurityCode: pickupPin,
+      deliverySecurityCode: deliveryPin,
     };
 
     // Save to real Supabase database
@@ -263,21 +267,32 @@ export const ClientOrderFlow: React.FC<ClientOrderFlowProps> = ({
               )}
 
               {activeClientOrder.status === 'at_pickup' && (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-blue-500" />
-                    <h3 className="font-black text-base text-blue-900">
-                      Motorista no local de coleta!
+                    <span className="w-3 h-3 rounded-full bg-amber-500 animate-ping" />
+                    <h3 className="font-black text-base text-amber-900">
+                      🚨 O motorista chegou no local de coleta!
                     </h3>
                   </div>
                   <p className="text-xs text-gray-600">
-                    Conferindo e embarcando seus pacotes no veículo.
+                    O motorista está no Ponto A aguardando o carregamento dos pacotes.
                   </p>
+                  <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl p-3 shadow-md flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase font-black tracking-wider block text-amber-100">
+                        Senha de Segurança da Coleta
+                      </span>
+                      <p className="text-xs font-bold">Forneça este código ao motorista:</p>
+                    </div>
+                    <div className="bg-white text-amber-600 font-mono font-black text-2xl px-3 py-1 rounded-xl tracking-widest shadow-sm">
+                      {activeClientOrder.pickupSecurityCode || '1234'}
+                    </div>
+                  </div>
                 </div>
               )}
 
               {activeClientOrder.status === 'in_transit' && (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded-full bg-purple-500 animate-pulse" />
                     <h3 className="font-black text-base text-purple-900">
@@ -287,6 +302,40 @@ export const ClientOrderFlow: React.FC<ClientOrderFlowProps> = ({
                   <p className="text-xs text-gray-600">
                     Sua encomenda já está a caminho do destino final (Ponto B).
                   </p>
+                  <div className="bg-blue-50 border border-blue-200 text-blue-950 rounded-2xl p-2.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-blue-500 block">Senha para Recebimento</span>
+                      <span className="font-bold">Código a ser dado no destino:</span>
+                    </div>
+                    <span className="bg-blue-600 text-white font-mono font-black text-lg px-2.5 py-0.5 rounded-lg tracking-widest">
+                      {activeClientOrder.deliverySecurityCode || '5678'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {activeClientOrder.status === 'at_delivery' && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
+                    <h3 className="font-black text-base text-emerald-900">
+                      🚨 O motorista chegou no destino!
+                    </h3>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    O motorista está no Ponto B pronto para entregar as mercadorias.
+                  </p>
+                  <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl p-3 shadow-md flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase font-black tracking-wider block text-emerald-100">
+                        Senha de Entrega
+                      </span>
+                      <p className="text-xs font-bold">O destinatário deve fornecer ao motorista:</p>
+                    </div>
+                    <div className="bg-white text-emerald-700 font-mono font-black text-2xl px-3 py-1 rounded-xl tracking-widest shadow-sm">
+                      {activeClientOrder.deliverySecurityCode || '5678'}
+                    </div>
+                  </div>
                 </div>
               )}
 
