@@ -65,10 +65,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         attributionControl: false,
       });
 
-      // CartoDB Positron / OpenStreetMap clean tiles for high contrast
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd',
+      // Clean Google Maps Street tiles (100% free, no API key required, fast CDN in Brazil)
+      L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['0', '1', '2', '3'],
       }).addTo(map);
 
       // Custom icon for Driver (animated pulse)
